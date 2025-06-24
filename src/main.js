@@ -2,6 +2,7 @@ import { Actor } from 'apify';
 import got from 'got';
 import { EXCLUDED_COMPANIES } from './excludedCompanies.js';
 import { JOB_TITLES, LOCATIONS, ROWS } from './scraperInput.js';
+import { buildReportRow } from './reportBase.js';
 
 export default Actor.main(async () => {
     // 1. Run LinkedIn jobs scraper for each job title and location
@@ -31,31 +32,7 @@ export default Actor.main(async () => {
     }
 
     // 3. Map to DataGOL schema
-    const rows = filteredItems.map(job => ({
-        position: 0,
-        cellValues: {
-            title: job.title ?? '',
-            location: job.location ?? '',
-            postedtime: job.postedTime ?? '',
-            publishedat: job.publishedAt ?? '',
-            joburl: job.jobUrl ?? '',
-            companyname: job.companyName ?? '',
-            companyurl: job.companyUrl ?? '',
-            description: job.description ?? '',
-            applicationscount: job.applicationsCount ?? '',
-            contracttype: job.contractType ?? '',
-            experiencelevel: job.experienceLevel ?? '',
-            worktype: job.workType ?? '',
-            sector: job.sector ?? '',
-            salary: job.salary ?? '',
-            posterfullname: job.posterFullName ?? '',
-            posterprofileurl: job.posterProfileUrl ?? '',
-            companyid: job.companyId ?? '',
-            applyurl: job.applyUrl ?? '',
-            applytype: job.applyType ?? '',
-            benefits: job.benefits ?? '',
-        },
-    }));
+    const rows = filteredItems.map(buildReportRow);
 
     const url = process.env.DATAGOL_URL;
     const token = process.env.DATAGOL_TOKEN;
