@@ -14,13 +14,14 @@ and posts the remaining jobs to DataGOL using HTTP requests.
 2. Set the following environment variables:
    - `DATAGOL_URL` – URL of the DataGOL endpoint
    - `DATAGOL_TOKEN` – authentication token for the endpoint
+   - `ROWS` *(optional)* – number of results to fetch for each query (default: 10)
 3. Run the actor
    ```bash
    npm start
    ```
 
 The actor does not require any input fields – it uses the data defined in the source files.
-You can adjust job titles, locations or the number of rows directly in `src/scraperInput.js`.
+You can adjust job titles and locations directly in `src/scraperInput.js`. The number of rows can be changed by setting the `ROWS` environment variable or editing `src/scraperInput.js`.
 
 ## Development
 
