@@ -2,6 +2,65 @@
   "schemaVersion": 1,
   "title": "Bridge input",
   "type": "object",
-  "properties": {},
-  "required": []
+  "properties": {
+    "datagolUrl": {
+      "title": "DataGOL URL",
+      "type": "string",
+      "description": "URL of the DataGOL endpoint."
+    },
+    "datagolToken": {
+      "title": "DataGOL token",
+      "type": "string",
+      "description": "Authentication token for the endpoint."
+    },
+    "rows": {
+      "title": "Rows",
+      "type": "integer",
+      "default": 10,
+      "description": "Number of results to fetch per query."
+    },
+    "scraperTimeoutSecs": {
+      "title": "Scraper timeout (secs)",
+      "type": "integer",
+      "default": 3600,
+      "description": "Maximum seconds to wait for each LinkedIn scraper run (max 3600)."
+    },
+    "jobTitles": {
+      "title": "Job titles",
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [
+        "Financial controller",
+        "Business controller",
+        "Financial analyst",
+        "FP&A",
+        "Finance Business Partner",
+        "Contr\u00f4leur de gestion",
+        "Analyste Financier",
+        "Financieel analist",
+        "Financieel controller",
+        "Accountant",
+        "comptable",
+        "boekhouder",
+        "gestionnaire de dossiers",
+        "dossierbeheerder"
+      ],
+      "description": "Job titles to search for."
+    },
+    "locations": {
+      "title": "Locations",
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [
+        "Brussels",
+        "Namur",
+        "Charleroi",
+        "Li\u00e8ge",
+        "Mons",
+        "Arlon"
+      ],
+      "description": "Locations to search for."
+    }
+  },
+  "required": ["datagolUrl", "datagolToken"]
 }
