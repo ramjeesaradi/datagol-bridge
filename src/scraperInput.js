@@ -24,4 +24,7 @@ export const LOCATIONS = [
     'Arlon',
 ];
 
-export const ROWS = 150;
+// Number of job rows to fetch from the LinkedIn scraper. Can be overridden
+// by setting the `ROWS` environment variable before running the actor.
+const rowsEnv = parseInt(process.env.ROWS ?? '', 10);
+export const ROWS = Number.isFinite(rowsEnv) ? rowsEnv : 10;
