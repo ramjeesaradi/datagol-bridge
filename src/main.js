@@ -30,7 +30,7 @@ export default Actor.main(async () => {
 
         const { defaultDatasetId } = await Actor.call('bebity/linkedin-jobs-scraper', scraperInput, {
             memory: 256,
-            timeoutSecs: SCRAPER_TIMEOUT,
+            timeout: SCRAPER_TIMEOUT,
         });
 
         const { items } = await Actor.openDataset(defaultDatasetId).then(ds => ds.getData());
