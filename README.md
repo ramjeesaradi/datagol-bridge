@@ -3,8 +3,11 @@
 This actor collects job postings from LinkedIn and forwards them to a DataGOL instance. It
 runs the `bebity/linkedin-jobs-scraper` actor for each job title and location listed in
 `src/scraperInput.js`, filters out postings from companies listed in `src/excludedCompanies.js`
-and posts the remaining jobs to DataGOL using HTTP requests. Results for each title/location
-pair are sent as soon as their scraper run finishes.
+and posts the remaining jobs to DataGOL using HTTP requests. Scraper runs for all
+title/location pairs are executed in parallel and results are forwarded as soon as
+each run finishes.
+Each LinkedIn scraper run is started with only 256&nbsp;MB of memory and
+will be aborted if it runs longer than 3600&nbsp;seconds (60&nbsp;minutes).
 
 ## Usage
 
@@ -12,18 +15,24 @@ pair are sent as soon as their scraper run finishes.
    ```bash
    npm install
    ```
-2. Set the following environment variables:
-   - `DATAGOL_URL` – URL of the DataGOL endpoint
-   - `DATAGOL_TOKEN` – authentication token for the endpoint
-   - `ROWS` *(optional)* – number of results to fetch for each query (default: 10)
-   - `SCRAPER_TIMEOUT_SECS` *(optional)* – max seconds to wait for the LinkedIn scraper
+2. Prepare `input.json` with your parameters, for example:
+   ```json
+  {
+    "datagolUrl": "https://example.com/api",
+    "datagolToken": "<TOKEN>",
+    "rows": 10,
+    "scraperTimeoutSecs": 3600,
+    "jobTitles": ["Financial controller"],
+    "locations": ["Brussels"]
+  }
+  ```
+   (3600 seconds equals 60 minutes.)
 3. Run the actor
    ```bash
    npm start
    ```
 
-The actor does not require any input fields – it uses the data defined in the source files.
-You can adjust job titles and locations directly in `src/scraperInput.js`. The number of rows can be changed by setting the `ROWS` environment variable or editing `src/scraperInput.js`.
+All parameters can also be passed via the Apify platform UI. When not provided, the defaults from `src/scraperInput.js` are used.
 
 ## Development
 
