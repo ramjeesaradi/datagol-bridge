@@ -32,14 +32,13 @@
     "jobTitles": {
       "title": "Job titles",
       "type": "array",
-      "items": { "type": "string" },
       "default": [
         "Financial controller",
         "Business controller",
         "Financial analyst",
         "FP&A",
         "Finance Business Partner",
-        "Contr\u00f4leur de gestion",
+        "Contrôleur de gestion",
         "Analyste Financier",
         "Financieel analist",
         "Financieel controller",
@@ -49,21 +48,22 @@
         "gestionnaire de dossiers",
         "dossierbeheerder"
       ],
-      "description": "Job titles to search for."
+      "description": "Job titles to search for.",
+      "editor": "stringList"
     },
     "locations": {
       "title": "Locations",
       "type": "array",
-      "items": { "type": "string" },
       "default": [
         "Brussels",
         "Namur",
         "Charleroi",
-        "Li\u00e8ge",
+        "Liège",
         "Mons",
         "Arlon"
       ],
-      "description": "Locations to search for."
+      "description": "Locations to search for.",
+      "editor": "stringList"
     }
   },
   "required": []
