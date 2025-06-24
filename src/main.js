@@ -1,5 +1,6 @@
 import { Actor } from 'apify';
 import got from 'got';
+import { EXCLUDED_COMPANIES } from './excludedCompanies.js';
 
 export default Actor.main(async () => {
     const { datasetId } = await Actor.getInput() ?? {};
@@ -12,8 +13,15 @@ export default Actor.main(async () => {
         return;
     }
 
+    // Filter out jobs with excluded company names
+    const filteredItems = items.filter(job => !EXCLUDED_COMPANIES.includes((job.companyName ?? '').trim()));
+    if (filteredItems.length === 0) {
+        console.log('Nothing to forward — all jobs excluded by company name.');
+        return;
+    }
+
     // 2. Map to DataGOL schema
-    const rows = items.map(job => ({
+    const rows = filteredItems.map(job => ({
         position: 0,
         cellValues: {
             title: job.title ?? '',
