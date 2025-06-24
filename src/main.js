@@ -29,7 +29,7 @@ export default Actor.main(async () => {
         console.log(`Running LinkedIn jobs scraper with input: ${JSON.stringify(scraperInput)}`);
 
         const { defaultDatasetId } = await Actor.call('bebity/linkedin-jobs-scraper', scraperInput, {
-            memoryMbytes: 256,
+            memory: 256,
             timeoutSecs: SCRAPER_TIMEOUT,
         });
 
