@@ -4,10 +4,13 @@ This actor collects job postings from LinkedIn and forwards them to a DataGOL in
 runs the `bebity/linkedin-jobs-scraper` actor for each job title and location listed in
 `src/scraperInput.js`, filters out postings from companies listed in `src/excludedCompanies.js`
 and posts the remaining jobs to DataGOL using HTTP requests. Scraper runs for all
-title/location pairs are executed in parallel and results are forwarded as soon as
-each run finishes.
+title/location pairs are executed in batches of 24 in parallel due to the platform's
+concurrent run limit, and results are forwarded as soon as
+each batch finishes.
 Each LinkedIn scraper run is started with only 256&nbsp;MB of memory and
-will be aborted if it runs longer than 3600&nbsp;seconds (60&nbsp;minutes).
+will be aborted if it runs longer than 600&nbsp;seconds (10&nbsp;minutes by default).
+When scheduling this actor, set its run timeout to at least the scraper timeout
+multiplied by the number of batches plus 120&nbsp;seconds so the bridge has enough time to finish.
 
 ## Usage
 
@@ -21,12 +24,12 @@ will be aborted if it runs longer than 3600&nbsp;seconds (60&nbsp;minutes).
     "datagolUrl": "https://example.com/api",
     "datagolToken": "<TOKEN>",
     "rows": 10,
-    "scraperTimeoutSecs": 3600,
+    "scraperTimeoutSecs": 600,
     "jobTitles": ["Financial controller"],
     "locations": ["Brussels"]
   }
   ```
-   (3600 seconds equals 60 minutes.)
+   (600 seconds equals 10 minutes.)
 3. Run the actor
    ```bash
    npm start
