@@ -64,5 +64,5 @@
       "description": "Locations to search for."
     }
   },
-  "required": ["datagolUrl", "datagolToken"]
+  "required": []
 }
