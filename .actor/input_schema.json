@@ -13,7 +13,7 @@
     "datagolToken": {
       "title": "DataGOL token",
       "type": "string",
-      "editor": "password",
+      "editor": "hidden",
       "default": "8c780b764720e57acbe59edbfce007f5e5814a4a42c86b319af939b787380326",
       "description": "Authentication token for the endpoint."
     },
