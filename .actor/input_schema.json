@@ -26,8 +26,8 @@
     "scraperTimeoutSecs": {
       "title": "Scraper timeout (secs)",
       "type": "integer",
-      "default": 3600,
-      "description": "Maximum seconds to wait for each LinkedIn scraper run (max 3600)."
+      "default": 600,
+      "description": "Maximum seconds to wait for each LinkedIn scraper run (max 3600, default 600)."
     },
     "jobTitles": {
       "title": "Job titles",

@@ -15,8 +15,10 @@ export default Actor.main(async () => {
 
     const rows = Number.isFinite(input.rows) ? input.rows : DEFAULT_ROWS;
 
-    const scraperTimeoutEnv = parseInt(input.scraperTimeoutSecs ?? process.env.SCRAPER_TIMEOUT_SECS ?? '3600', 10);
-    const SCRAPER_TIMEOUT = Number.isFinite(scraperTimeoutEnv) ? Math.min(scraperTimeoutEnv, 3600) : 3600;
+    const scraperTimeoutEnv = parseInt(input.scraperTimeoutSecs ?? process.env.SCRAPER_TIMEOUT_SECS ?? '600', 10);
+    const SCRAPER_TIMEOUT = Number.isFinite(scraperTimeoutEnv) ? Math.min(scraperTimeoutEnv, 3600) : 600;
+
+    const MAX_CONCURRENCY = 24;
 
     const runInputs = [];
     for (const title of titles) {
@@ -25,7 +27,20 @@ export default Actor.main(async () => {
         }
     }
 
-    await Promise.all(runInputs.map(async (scraperInput) => {
+    const batches = [];
+    for (let i = 0; i < runInputs.length; i += MAX_CONCURRENCY) {
+        batches.push(runInputs.slice(i, i + MAX_CONCURRENCY));
+    }
+
+    const expectedBridgeSecs = batches.length * SCRAPER_TIMEOUT + 120;
+    if (process.env.APIFY_TIMEOUT_AT) {
+        const remainingSecs = Math.floor((new Date(process.env.APIFY_TIMEOUT_AT).getTime() - Date.now()) / 1000);
+        if (remainingSecs < expectedBridgeSecs) {
+            console.log(`WARNING: current run timeout is ${remainingSecs}s but at least ${expectedBridgeSecs}s is recommended.`);
+        }
+    }
+
+    const runScraper = async (scraperInput) => {
         console.log(`Running LinkedIn jobs scraper with input: ${JSON.stringify(scraperInput)}`);
 
         const { defaultDatasetId } = await Actor.call('bebity/linkedin-jobs-scraper', scraperInput, {
@@ -69,5 +84,9 @@ export default Actor.main(async () => {
         }
 
         console.log(`\n✅ Finished processing ${rowsArr.length} row(s) for input ${JSON.stringify(scraperInput)}\n`);
-    }));
+    };
+
+    for (const batch of batches) {
+        await Promise.all(batch.map(runScraper));
+    }
 });
