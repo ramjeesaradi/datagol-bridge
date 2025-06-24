@@ -3,7 +3,8 @@
 This actor collects job postings from LinkedIn and forwards them to a DataGOL instance. It
 runs the `bebity/linkedin-jobs-scraper` actor for each job title and location listed in
 `src/scraperInput.js`, filters out postings from companies listed in `src/excludedCompanies.js`
-and posts the remaining jobs to DataGOL using HTTP requests.
+and posts the remaining jobs to DataGOL using HTTP requests. Results for each title/location
+pair are sent as soon as their scraper run finishes.
 
 ## Usage
 
@@ -15,6 +16,7 @@ and posts the remaining jobs to DataGOL using HTTP requests.
    - `DATAGOL_URL` – URL of the DataGOL endpoint
    - `DATAGOL_TOKEN` – authentication token for the endpoint
    - `ROWS` *(optional)* – number of results to fetch for each query (default: 10)
+   - `SCRAPER_TIMEOUT_SECS` *(optional)* – max seconds to wait for the LinkedIn scraper
 3. Run the actor
    ```bash
    npm start
