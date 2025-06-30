@@ -1,91 +1,20 @@
 import { Actor } from 'apify';
 import got from 'got';
-import { EXCLUDED_COMPANIES as DEFAULT_EXCLUDED_COMPANIES } from './excludedCompanies.js';
-import { JOB_TITLES as DEFAULT_JOB_TITLES, LOCATIONS as DEFAULT_LOCATIONS, ROWS as DEFAULT_ROWS } from './scraperInput.js';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { buildReportRow } from './reportBase.js';
+import { 
+    fetchJobTitles, 
+    fetchCompetitorList, 
+    fetchLocations 
+} from './fetchers.js';
 
-// Dynamic data fetching functions
-const fetchJobTitles = async () => {
-    try {
-        console.log('Fetching job titles from external API...');
-        const response = await got.post('https://be-eu.datagol.ai/noCo/api/v2/workspaces/8e894b95-cc40-44f0-88d7-4aae346b0325/tables/395a586f-2d3e-4489-a5d9-be0039f97aa1/data/external', {
-            headers: {
-                'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJtZmFfc3RhdHVzIjoiTk9UX1JFUVVJUkVEIiwic3ViIjoiZGV2QGpoLnBhcnRuZXJzIiwicGVybWlzc2lvbnMiOlsiVklFV19EQVRBU09VUkNFIiwiVklFV19VU0VSUyIsIkNSRUFURV9DT1BJTE9UIiwiRURJVF9DT1BJTE9UIiwiREVMRVRFX0NPUElMT1QiLCJWSUVXX0NPUElMT1QiLCJFRElUX0xBS0VIT1VTRSIsIlZJRVdfQ09OTkVDVE9SUyIsIkNSRUFURV9QSVBFTElORSIsIkNSRUFURV9EQVRBU09VUkNFIiwiRURJVF9VU0VSUyIsIlZJRVdfQUxFUlRTIiwiRURJVF9QSVBFTElORSIsIkVESVRfQ09OTkVDVE9SUyIsIkRFTEVURV9DT05ORUNUT1JTIiwiVklFV19QSVBFTElORSIsIkVESVRfQ09NUEFOWSIsIkRFTEVURV9VU0VSUyIsIlZJRVdfSk9CUyIsIkNSRUFURV9DT05ORUNUT1JTIiwiQ1JFQVRFX1VTRVJTIiwiRURJVF9EQVRBU09VUkNFIiwiREVMRVRFX0RBVEFTT1VSQ0UiLCJWSUVXX0xBS0VIT1VTRSIsIkNSRUFURV9MQUtFSE9VU0UiLCJERUxFVEVfTEFLRUhPVVNFIiwiREVMRVRFX1BJUEVMSU5FIiwiQVNTSUdOX1JPTEVTIl0sInJvbGVzIjpbIlVTRVIiLCJMQUtFSE9VU0VfQURNSU4iLCJDT05ORUNUT1JfQURNSU4iLCJDT1BJTE9USFVCX0FETUlOIiwiQUNDT1VOVF9BRE1JTiJdLCJleHAiOjE3NTE2MjkzODUsImlhdCI6MTc1MTI2OTM4NX0.zu4gurcKytvz9FeMLZP4mhm3l-PUXIq2QQE0AF9kb8X5fLr0H_D8qFy1mzxHv4rBzL13J4VjQaUWeN8bj3jVYA',
-                'Content-Type': 'application/json'
-            },
-            json: {"requestPageDetails":{"pageNumber":1,"pageSize":500}}
-        });
-        
-        const data = JSON.parse(response.body);
-        if (data && data.data && Array.isArray(data.data)) {
-            const titles = data.data.map(item => item.title || item.name || item.jobTitle).filter(Boolean);
-            if (titles.length > 0) {
-                console.log(`✅ Fetched ${titles.length} job titles from external API`);
-                return titles;
-            }
-        }
-        throw new Error('No valid job titles found in response');
-    } catch (error) {
-        console.log(`❌ Failed to fetch job titles from external API: ${error.message}`);
-        console.log('📋 Using default job titles');
-        return DEFAULT_JOB_TITLES;
-    }
-};
+// Get the directory name in ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-const fetchCompetitorList = async () => {
-    try {
-        console.log('Fetching competitor list from external API...');
-        const response = await got.post('https://be-eu.datagol.ai/noCo/api/v2/workspaces/8e894b95-cc40-44f0-88d7-4aae346b0325/tables/ac27bdbc-b564-429e-815d-356d58b00d06/data/external', {
-            headers: {
-                'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJtZmFfc3RhdHVzIjoiTk9UX1JFUVVJUkVEIiwic3ViIjoiZGV2QGpoLnBhcnRuZXJzIiwicGVybWlzc2lvbnMiOlsiVklFV19EQVRBU09VUkNFIiwiVklFV19VU0VSUyIsIkNSRUFURV9DT1BJTE9UIiwiRURJVF9DT1BJTE9UIiwiREVMRVRFX0NPUElMT1QiLCJWSUVXX0NPUElMT1QiLCJFRElUX0xBS0VIT1VTRSIsIlZJRVdfQ09OTkVDVE9SUyIsIkNSRUFURV9QSVBFTElORSIsIkNSRUFURV9EQVRBU09VUkNFIiwiRURJVF9VU0VSUyIsIlZJRVdfQUxFUlRTIiwiRURJVF9QSVBFTElORSIsIkVESVRfQ09OTkVDVE9SUyIsIkRFTEVURV9DT05ORUNUT1JTIiwiVklFV19QSVBFTElORSIsIkVESVRfQ09NUEFOWSIsIkRFTEVURV9VU0VSUyIsIlZJRVdfSk9CUyIsIkNSRUFURV9DT05ORUNUT1JTIiwiQ1JFQVRFX1VTRVJTIiwiRURJVF9EQVRBU09VUkNFIiwiREVMRVRFX0RBVEFTT1VSQ0UiLCJWSUVXX0xBS0VIT1VTRSIsIkNSRUFURV9MQUtFSE9VU0UiLCJERUxFVEVfTEFLRUhPVVNFIiwiREVMRVRFX1BJUEVMSU5FIiwiQVNTSUdOX1JPTEVTIl0sInJvbGVzIjpbIlVTRVIiLCJMQUtFSE9VU0VfQURNSU4iLCJDT05ORUNUT1JfQURNSU4iLCJDT1BJTE9USFVCX0FETUlOIiwiQUNDT1VOVF9BRE1JTiJdLCJleHAiOjE3NTE2MjkzODUsImlhdCI6MTc1MTI2OTM4NX0.zu4gurcKytvz9FeMLZP4mhm3l-PUXIq2QQE0AF9kb8X5fLr0H_D8qFy1mzxHv4rBzL13J4VjQaUWeN8bj3jVYA',
-                'Content-Type': 'application/json'
-            },
-            json: {"requestPageDetails":{"pageNumber":1,"pageSize":500}}
-        });
-        
-        const data = JSON.parse(response.body);
-        if (data && data.data && Array.isArray(data.data)) {
-            const companies = data.data.map(item => item.company || item.companyName || item.name).filter(Boolean);
-            if (companies.length > 0) {
-                console.log(`✅ Fetched ${companies.length} companies from external API`);
-                return companies;
-            }
-        }
-        throw new Error('No valid companies found in response');
-    } catch (error) {
-        console.log(`❌ Failed to fetch competitor list from external API: ${error.message}`);
-        console.log('📋 Using default excluded companies');
-        return DEFAULT_EXCLUDED_COMPANIES;
-    }
-};
-
-const fetchLocations = async () => {
-    try {
-        console.log('Fetching locations from external workbook...');
-        // Note: The workbook URL needs to be converted to an API endpoint
-        // For now using a placeholder - you may need to adjust this based on the actual API structure
-        const response = await got.get('https://be-eu.datagol.ai/noCo/api/v2/workspaces/8e894b95-cc40-44f0-88d7-4aae346b0325/workbooks/6122189a-764f-40a9-9721-d756b7dd3626/data', {
-            headers: {
-                'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJtZmFfc3RhdHVzIjoiTk9UX1JFUVVJUkVEIiwic3ViIjoiZGV2QGpoLnBhcnRuZXJzIiwicGVybWlzc2lvbnMiOlsiVklFV19EQVRBU09VUkNFIiwiVklFV19VU0VSUyIsIkNSRUFURV9DT1BJTE9UIiwiRURJVF9DT1BJTE9UIiwiREVMRVRFX0NPUElMT1QiLCJWSUVXX0NPUElMT1QiLCJFRElUX0xBS0VIT1VTRSIsIlZJRVdfQ09OTkVDVE9SUyIsIkNSRUFURV9QSVBFTElORSIsIkNSRUFURV9EQVRBU09VUkNFIiwiRURJVF9VU0VSUyIsIlZJRVdfQUxFUlRTIiwiRURJVF9QSVBFTElORSIsIkVESVRfQ09OTkVDVE9SUyIsIkRFTEVURV9DT05ORUNUT1JTIiwiVklFV19QSVBFTElORSIsIkVESVRfQ09NUEFOWSIsIkRFTEVURV9VU0VSUyIsIlZJRVdfSk9CUyIsIkNSRUFURV9DT05ORUNUT1JTIiwiQ1JFQVRFX1VTRVJTIiwiRURJVF9EQVRBU09VUkNFIiwiREVMRVRFX0RBVEFTT1VSQ0UiLCJWSUVXX0xBS0VIT1VTRSIsIkNSRUFURV9MQUtFSE9VU0UiLCJERUxFVEVfTEFLRUhPVVNFIiwiREVMRVRFX1BJUEVMSU5FIiwiQVNTSUdOX1JPTEVTIl0sInJvbGVzIjpbIlVTRVIiLCJMQUtFSE9VU0VfQURNSU4iLCJDT05ORUNUT1JfQURNSU4iLCJDT1BJTE9USFVCX0FETUlOIiwiQUNDT1VOVF9BRE1JTiJdLCJleHAiOjE3NTE2MjkzODUsImlhdCI6MTc1MTI2OTM4NX0.zu4gurcKytvz9FeMLZP4mhm3l-PUXIq2QQE0AF9kb8X5fLr0H_D8qFy1mzxHv4rBzL13J4VjQaUWeN8bj3jVYA',
-                'Accept': 'application/json'
-            }
-        });
-        
-        const data = JSON.parse(response.body);
-        if (data && data.data && Array.isArray(data.data)) {
-            const locations = data.data.map(item => item.location || item.city || item.name).filter(Boolean);
-            if (locations.length > 0) {
-                console.log(`✅ Fetched ${locations.length} locations from external API`);
-                return locations;
-            }
-        }
-        throw new Error('No valid locations found in response');
-    } catch (error) {
-        console.log(`❌ Failed to fetch locations from external API: ${error.message}`);
-        console.log('📋 Using default locations');
-        return DEFAULT_LOCATIONS;
-    }
-};
+// Helper function to log messages
+const log = (message) => console.log(`[main] ${message}`);
 
 export default Actor.main(async () => {
     const input = await Actor.getInput() ?? {};
@@ -101,10 +30,22 @@ export default Actor.main(async () => {
         fetchLocations()
     ]);
 
-    // Use input values if provided, otherwise use fetched data
-    const titles = Array.isArray(input.jobTitles) && input.jobTitles.length ? input.jobTitles : fetchedTitles;
-    const locations = Array.isArray(input.locations) && input.locations.length ? input.locations : fetchedLocations;
-    const excludedCompanies = fetchedCompetitors;
+    // Use fetched data if available, otherwise fall back to input values
+    const titles = Array.isArray(fetchedTitles) && fetchedTitles.length ? fetchedTitles : 
+                 (Array.isArray(input.jobTitles) && input.jobTitles.length ? input.jobTitles : []);
+    const locations = Array.isArray(fetchedLocations) && fetchedLocations.length ? fetchedLocations : 
+                    (Array.isArray(input.locations) && input.locations.length ? input.locations : []);
+    const excludedCompanies = Array.isArray(fetchedCompetitors) && fetchedCompetitors.length ? fetchedCompetitors : [];
+    
+    if (!titles.length) {
+        console.warn('⚠️  No job titles found from either API or input. Using empty array.');
+    }
+    if (!locations.length) {
+        console.warn('⚠️  No locations found from either API or input. Using empty array.');
+    }
+    if (!excludedCompanies.length) {
+        console.warn('⚠️  No excluded companies found from API. Using empty array.');
+    }
 
     const rows = Number.isFinite(input.rows) ? input.rows : DEFAULT_ROWS;
 
