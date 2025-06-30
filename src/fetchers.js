@@ -5,7 +5,17 @@ const DEFAULT_JOB_TITLES = [
     'Financial controller',
     'Business controller',
     'Financial analyst',
-    'FP&A'
+    'FP&A',
+    'Finance Business Partner',
+    'Contrôleur de gestion',
+    'Analyste Financier',
+    'Financieel analist',
+    'Financieel controller',
+    'Accountant',
+    'comptable',
+    'boekhouder',
+    'gestionnaire de dossiers',
+    'dossierbeheerder',
 ];
 
 const DEFAULT_EXCLUDED_COMPANIES = [
@@ -23,17 +33,18 @@ const DEFAULT_EXCLUDED_COMPANIES = [
 
 const DEFAULT_LOCATIONS = [
     'Brussels',
-    'Antwerp',
-    'Ghent',
-    'Bruges',
-    'Leuven',
-    'Mechelen',
     'Namur',
     'Charleroi',
     'Liège',
     'Mons',
-    'Arlon'
+    'Arlon',
 ];
+
+const DATAGOL_API_TOKEN = '8c780b764720e57acbe59edbfce007f5e5814a4a42c86b319af939b787380326';
+const COMMON_HEADERS = {
+    'Authorization': `Bearer ${DATAGOL_API_TOKEN}`,
+    'Content-Type': 'application/json',
+};
 
 // Helper function to log messages
 const log = (message) => console.log(`[fetchers] ${message}`);
@@ -48,10 +59,8 @@ export const fetchJobTitles = async () => {
         const response = await got.post(
             'https://be-eu.datagol.ai/noCo/api/v2/workspaces/8e894b95-cc40-44f0-88d7-4aae346b0325/tables/395a586f-2d3e-4489-a5d9-be0039f97aa1/data/external',
             {
-                headers: {
-                    'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJtZmFfc3RhdHVzIjoiTk9UX1JFUVVJUkVEIiwic3ViIjoiZGV2QGpoLnBhcnRuZXJzIiwicGVybWlzc2lvbnMiOlsiVklFV19EQVRBU09VUkNFIiwiVklFV19VU0VSUyIsIkNSRUFURV9DT1BJTE9UIiwiRURJVF9DT1BJTE9UIiwiREVMRVRFX0NPUElMT1QiLCJWSUVXX0NPUElMT1QiLCJFRElUX0xBS0VIT1VTRSIsIlZJRVdfQ09OTkVDVE9SUyIsIkNSRUFURV9QSVBFTElORSIsIkNSRUFURV9EQVRBU09VUkNFIiwiRURJVF9VU0VSUyIsIlZJRVdfQUxFUlRTIiwiRURJVF9QSVBFTElORSIsIkVESVRfQ09OTkVDVE9SUyIsIkRFTEVURV9DT05ORUNUT1JTIiwiVklFV19QSVBFTElORSIsIkVESVRfQ09NUEFOWSIsIkRFTEVURV9VU0VSUyIsIlZJRVdfSk9CUyIsIkNSRUFURV9DT05ORUNUT1JTIiwiQ1JFQVRFX1VTRVJTIiwiRURJVF9EQVRBU09VUkNFIiwiREVMRVRFX0RBVEFTT1VSQ0UiLCJWSUVXX0xBS0VIT1VTRSIsIkNSRUFURV9MQUtFSE9VU0UiLCJERUxFVEVfTEFLRUhPVVNFIiwiREVMRVRFX1BJUEVMSU5FIiwiQVNTSUdOX1JPTEVTIl0sInJvbGVzIjpbIlVTRVIiLCJMQUtFSE9VU0VfQURNSU4iLCJDT05ORUNUT1JfQURNSU4iLCJDT1BJTE9USFVCX0FETUlOIiwiQUNDT1VOVF9BRE1JTiJdLCJleHAiOjE3NTE2MjkzODUsImlhdCI6MTc1MTI2OTM4NX0.zu4gurcKytvz9FeMLZP4mhm3l-PUXIq2QQE0AF9kb8X5fLr0H_D8qFy1mzxHv4rBzL13J4VjQaUWeN8bj3jVYA',
-                    'Content-Type': 'application/json'
-                },
+                headers: COMMON_HEADERS,
+                throwHttpErrors: false,
                 json: {
                     requestPageDetails: {
                         pageNumber: 1,
@@ -90,10 +99,8 @@ export const fetchCompetitorList = async () => {
         const response = await got.post(
             'https://be-eu.datagol.ai/noCo/api/v2/workspaces/8e894b95-cc40-44f0-88d7-4aae346b0325/tables/ac27bdbc-b564-429e-815d-356d58b00d06/data/external',
             {
-                headers: {
-                    'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJtZmFfc3RhdHVzIjoiTk9UX1JFUVVJUkVEIiwic3ViIjoiZGV2QGpoLnBhcnRuZXJzIiwicGVybWlzc2lvbnMiOlsiVklFV19EQVRBU09VUkNFIiwiVklFV19VU0VSUyIsIkNSRUFURV9DT1BJTE9UIiwiRERJVF9DT1BJTE9UIiwiREVMRVRFX0NPUElMT1QiLCJWSUVXX0NPUElMT1QiLCJFRElUX0xBS0VIT1VTRSIsIlZJRVdfQ09OTkVDVE9SUyIsIkNSRUFURV9QSVBFTElORSIsIkNSRUFURV9EQVRBU09VUkNFIiwiRURJVF9VU0VSUyIsIlZJRVdfQUxFUlRTIiwiRURJVF9QSVBFTElORSIsIkVESVRfQ09OTkVDVE9SUyIsIkRFTEVURV9DT05ORUNUT1JTIiwiVklFV19QSVBFTElORSIsIkVESVRfQ09NUEFOWSIsIkRFTEVURV9VU0VSUyIsIlZJRVdfSk9CUyIsIkNSRUFURV9DT05ORUNUT1JTIiwiQ1JFQVRFX1VTRVJTIiwiRURJVF9EQVRBU09VUkNFIiwiREVMRVRFX0RBVEFTT1VSQ0UiLCJWSUVXX0xBS0VIT1VTRSIsIkNSRUFURV9MQUtFSE9VU0UiLCJERUxFVEVfTEFLRUhPVVNFIiwiREVMRVRFX1BJUEVMSU5FIiwiQVNTSUdOX1JPTEVTIl0sInJvbGVzIjpbIlVTRVIiLCJMQUtFSE9VU0VfQURNSU4iLCJDT05ORUNUT1JfQURNSU4iLCJDT1BJTE9USFVCX0FETUlOIiwiQUNDT1VOVF9BRE1JTiJdLCJleHAiOjE3NTE2MjkzODUsImlhdCI6MTc1MTI2OTM4NX0.zu4gurcKytvz9FeMLZP4mhm3l-PUXIq2QQE0AF9kb8X5fLr0H_D8qFy1mzxHv4rBzL13J4VjQaUWeN8bj3jVYA',
-                    'Content-Type': 'application/json'
-                },
+                headers: COMMON_HEADERS,
+                throwHttpErrors: false,
                 json: {
                     requestPageDetails: {
                         pageNumber: 1,
@@ -135,10 +142,8 @@ export const fetchLocations = async () => {
         const response = await got.post(
             'https://be-eu.datagol.ai/noCo/api/v2/workspaces/8e894b95-cc40-44f0-88d7-4aae346b0325/tables/6122189a-764f-40a9-9721-d756b7dd3626/data/external',
             {
-                headers: {
-                    'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJtZmFfc3RhdHVzIjoiTk9UX1JFUVVJUkVEIiwic3ViIjoiZGV2QGpoLnBhcnRuZXJzIiwicGVybWlzc2lvbnMiOlsiVklFV19EQVRBU09VUkNFIiwiVklFV19VU0VSUyIsIkNSRUFURV9DT1BJTE9UIiwiRERJVF9DT1BJTE9UIiwiREVMRVRFX0NPUElMT1QiLCJWSUVXX0NPUElMT1QiLCJFRElUX0xBS0VIT1VTRSIsIlZJRVdfQ09OTkVDVE9SUyIsIkNSRUFURV9QSVBFTElORSIsIkNSRUFURV9EQVRBU09VUkNFIiwiRURJVF9VU0VSUyIsIlZJRVdfQUxFUlRTIiwiRURJVF9QSVBFTElORSIsIkVESVRfQ09OTkVDVE9SUyIsIkRFTEVURV9DT05ORUNUT1JTIiwiVklFV19QSVBFTElORSIsIkVESVRfQ09NUEFOWSIsIkRFTEVURV9VU0VSUyIsIlZJRVdfSk9CUyIsIkNSRUFURV9DT05ORUNUT1JTIiwiQ1JFQVRFX1VTRVJTIiwiRURJVF9EQVRBU09VUkNFIiwiREVMRVRFX0RBVEFTT1VSQ0UiLCJWSUVXX0xBS0VIT1VTRSIsIkNSRUFURV9MQUtFSE9VU0UiLCJERUxFVEVfTEFLRUhPVVNFIiwiREVMRVRFX1BJUEVMSU5FIiwiQVNTSUdOX1JPTEVTIl0sInJvbGVzIjpbIlVTRVIiLCJMQUtFSE9VU0VfQURNSU4iLCJDT05ORUNUT1JfQURNSU4iLCJDT1BJTE9USFVCX0FETUlOIiwiQUNDT1VOVF9BRE1JTiJdLCJleHAiOjE3NTE2MjkzODUsImlhdCI6MTc1MTI2OTM4NX0.zu4gurcKytvz9FeMLZP4mhm3l-PUXIq2QQE0AF9kb8X5fLr0H_D8qFy1mzxHv4rBzL13J4VjQaUWeN8bj3jVYA',
-                    'Content-Type': 'application/json'
-                },
+                headers: COMMON_HEADERS,
+                throwHttpErrors: false,
                 json: {
                     requestPageDetails: {
                         pageNumber: 1,
