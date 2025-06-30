@@ -132,16 +132,16 @@ export default Actor.main(async () => {
 
     const expectedBridgeSecs = batches.length * SCRAPER_TIMEOUT + 120;
     
-    // Set the current actor timeout to match the expected bridge execution time
-    console.log(`🕐 Setting actor timeout to ${expectedBridgeSecs} seconds to match job scraping requirements`);
-    await Actor.setTimeout(expectedBridgeSecs * 1000); // Convert to milliseconds
+    // Log the expected execution time and check against current timeout
+    console.log(`⏱️  Expected execution time: ${expectedBridgeSecs} seconds`);
     
     if (process.env.APIFY_TIMEOUT_AT) {
         const remainingSecs = Math.floor((new Date(process.env.APIFY_TIMEOUT_AT).getTime() - Date.now()) / 1000);
         if (remainingSecs < expectedBridgeSecs) {
-            console.log(`WARNING: current run timeout is ${remainingSecs}s but at least ${expectedBridgeSecs}s is recommended.`);
+            console.log(`WARNING: Current run timeout is ${remainingSecs}s but at least ${expectedBridgeSecs}s is recommended.`);
+            console.log(`⚠️  Please increase the actor timeout in your Apify task settings to at least ${expectedBridgeSecs} seconds`);
         } else {
-            console.log(`✅ Actor timeout successfully set: ${remainingSecs}s available, ${expectedBridgeSecs}s required`);
+            console.log(`✅ Sufficient time allocated: ${remainingSecs}s available, ${expectedBridgeSecs}s required`);
         }
     }
 
