@@ -40,7 +40,10 @@ const DEFAULT_LOCATIONS = [
     'Arlon',
 ];
 
-const DATAGOL_API_TOKEN = '8c780b764720e57acbe59edbfce007f5e5814a4a42c86b319af939b787380326';
+const DATAGOL_API_TOKEN = process.env.DATAGOL_API_TOKEN
+    || process.env.DATAGOL_TOKEN
+    || '8c780b764720e57acbe59edbfce007f5e5814a4a42c86b319af939b787380326';
+
 const COMMON_HEADERS = {
     'Authorization': `Bearer ${DATAGOL_API_TOKEN}`,
     'Content-Type': 'application/json',
