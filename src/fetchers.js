@@ -68,7 +68,7 @@ export const fetchJobTitles = async () => {
                     }
                 },
                 responseType: 'json',
-                timeout: 10000
+                timeout: { request: 10000 }
             }
         );
 
@@ -108,7 +108,7 @@ export const fetchCompetitorList = async () => {
                     }
                 },
                 responseType: 'json',
-                timeout: 10000
+                timeout: { request: 10000 }
             }
         );
 
@@ -151,7 +151,7 @@ export const fetchLocations = async () => {
                     }
                 },
                 responseType: 'json',
-                timeout: 10000
+                timeout: { request: 10000 }
             }
         );
 
