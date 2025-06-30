@@ -17,8 +17,8 @@
     },
     "scripts": {
         "start": "node ./src/main.js",
-        "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-        "test:fetch": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/fetch.test.js"
+        "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+        "test:fetch": "NODE_OPTIONS=--experimental-vm-modules jest tests/fetch.test.js"
     },
     "author": "It's not you it's me",
     "license": "ISC"
