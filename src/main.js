@@ -101,9 +101,25 @@ export default Actor.main(async () => {
             return;
         }
 
-        const filteredItems = items.filter(job => !excludedCompanies.includes((job.companyName ?? '').trim()));
-        if (filteredItems.length === 0) {
+        // First filter by excluded companies
+        const filteredByCompany = items.filter(job => !excludedCompanies.includes((job.companyName ?? '').trim()));
+        if (filteredByCompany.length === 0) {
             console.log('Nothing to forward — all jobs excluded by company name.');
+            return;
+        }
+
+        // Then filter by location if locations are specified
+        const filteredItems = locations.length > 0 
+            ? filteredByCompany.filter(job => {
+                const jobLocation = (job.location || '').toLowerCase();
+                return locations.some(loc => 
+                    jobLocation.includes(loc.toLowerCase())
+                );
+            })
+            : filteredByCompany;
+
+        if (filteredItems.length === 0) {
+            console.log('Nothing to forward — no jobs match the specified locations.');
             return;
         }
 
