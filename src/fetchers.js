@@ -73,7 +73,15 @@ export const fetchJobTitles = async () => {
         );
 
         // Extract job titles from the response
-        const jobTitles = response.body.data.map(item => item.title || item.name || item.jobTitle).filter(Boolean);
+        const data = Array.isArray(response.body?.data) ? response.body.data : null;
+        if (!data) {
+            log(`Unexpected API response for job titles (status ${response.statusCode})`);
+            return DEFAULT_JOB_TITLES;
+        }
+
+        const jobTitles = data
+            .map(item => item.title || item.name || item.jobTitle)
+            .filter(Boolean);
         
         if (jobTitles.length === 0) {
             log('No job titles found in API response, using defaults');
@@ -113,7 +121,13 @@ export const fetchCompetitorList = async () => {
         );
 
         // Extract company names from the response
-        const companies = response.body.data
+        const data = Array.isArray(response.body?.data) ? response.body.data : null;
+        if (!data) {
+            log(`Unexpected API response for competitors (status ${response.statusCode})`);
+            return DEFAULT_EXCLUDED_COMPANIES;
+        }
+
+        const companies = data
             .map(item => item.company || item.name || item.companyName)
             .filter(Boolean)
             .map(company => company.trim());
@@ -158,8 +172,14 @@ export const fetchLocations = async () => {
         // Extract location names from the response, handling different possible field names
         const locations = [];
         const seen = new Set();
-        
-        response.body.data.forEach(item => {
+
+        const data = Array.isArray(response.body?.data) ? response.body.data : null;
+        if (!data) {
+            log(`Unexpected API response for locations (status ${response.statusCode})`);
+            return DEFAULT_LOCATIONS;
+        }
+
+        data.forEach(item => {
             const location = item.location || item.city || item.name || item.title;
             if (location && typeof location === 'string' && !seen.has(location.trim())) {
                 seen.add(location.trim());
