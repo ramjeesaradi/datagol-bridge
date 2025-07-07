@@ -3,11 +3,7 @@ import got from 'got';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { buildReportRow } from './reportBase.js';
-import { 
-    fetchJobTitles, 
-    fetchCompetitorList, 
-    fetchLocations 
-} from './fetchers.js';
+import { fetchAllData } from './fetchers.js';
 
 // Get the directory name in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -15,6 +11,9 @@ const __dirname = dirname(__filename);
 
 // Helper function to log messages
 const log = (message) => console.log(`[main] ${message}`);
+
+// Function to create a unique key for a job
+const getJobKey = (job) => `${job.title?.trim()}-${job.companyName?.trim()}-${job.location?.trim()}`;
 
 export default Actor.main(async () => {
     const input = await Actor.getInput() ?? {};
@@ -24,11 +23,11 @@ export default Actor.main(async () => {
 
     // Fetch dynamic data with fallbacks to static defaults
     console.log('🔄 Fetching dynamic configuration data...');
-    const [fetchedTitles, fetchedCompetitors, fetchedLocations] = await Promise.all([
-        fetchJobTitles(),
-        fetchCompetitorList(),
-        fetchLocations()
-    ]);
+    const { 
+        jobTitles: fetchedTitles, 
+        excludedCompanies: fetchedCompetitors, 
+        locations: fetchedLocations 
+    } = await fetchAllData();
 
     // Use fetched data if available, otherwise fall back to input values
     const titles = Array.isArray(fetchedTitles) && fetchedTitles.length ? fetchedTitles : 
@@ -47,7 +46,7 @@ export default Actor.main(async () => {
         console.warn('⚠️  No excluded companies found from API. Using empty array.');
     }
 
-    const rows = Number.isFinite(input.rows) ? input.rows : DEFAULT_ROWS;
+    const totalJobsToFetch = Number.isFinite(input.totalJobsToFetch) ? input.totalJobsToFetch : 1000;
 
     const scraperTimeoutEnv = parseInt(input.scraperTimeoutSecs ?? process.env.SCRAPER_TIMEOUT_SECS ?? '600', 10);
     const SCRAPER_TIMEOUT = Number.isFinite(scraperTimeoutEnv) ? Math.min(scraperTimeoutEnv, 3600) : 600;
@@ -55,14 +54,18 @@ export default Actor.main(async () => {
     const MAX_CONCURRENCY = 24;
 
     const runInputs = [];
-    for (const title of titles) {
-        for (const location of locations) {
-            runInputs.push({ 
-                title, 
-                location, 
-                rows, 
-                publishedAt: "r86400" // Filter for jobs from last 24 hours
-            });
+    const combinations = titles.length * locations.length;
+    if (combinations > 0) {
+        const jobsPerCombination = Math.ceil(totalJobsToFetch / combinations);
+        for (const title of titles) {
+            for (const location of locations) {
+                runInputs.push({ 
+                    title, 
+                    location, 
+                    rows: jobsPerCombination, 
+                    publishedAt: "r86400" // Filter for jobs from last 24 hours
+                });
+            }
         }
     }
 
@@ -86,6 +89,8 @@ export default Actor.main(async () => {
         }
     }
 
+    const processedJobs = new Set();
+
     const runScraper = async (scraperInput) => {
         console.log(`Running LinkedIn jobs scraper with input: ${JSON.stringify(scraperInput)}`);
 
@@ -101,29 +106,46 @@ export default Actor.main(async () => {
             return;
         }
 
-        // First filter by excluded companies
-        const filteredByCompany = items.filter(job => !excludedCompanies.includes((job.companyName ?? '').trim()));
-        if (filteredByCompany.length === 0) {
-            console.log('Nothing to forward — all jobs excluded by company name.');
-            return;
-        }
+        // Filter by excluded companies and elimination words
+        const filteredByCompanyAndKeywords = items.filter(job => {
+            const companyName = (job.companyName ?? '').trim();
+            const jobText = `${job.title} ${job.description}`.toLowerCase();
+            
+            // Check if company is in excludedCompanies
+            const isCompanyExcluded = excludedCompanies.includes(companyName);
+
+            // Check if any word from excludedCompanies (used as elimination words) exists in job text
+            const isKeywordExcluded = excludedCompanies.some(word => jobText.includes(word.toLowerCase()));
+
+            return !isCompanyExcluded && !isKeywordExcluded;
+        });
 
         // Then filter by location if locations are specified
-        const filteredItems = locations.length > 0 
-            ? filteredByCompany.filter(job => {
+        const filteredByLocation = locations.length > 0 
+            ? filteredByCompanyAndKeywords.filter(job => {
                 const jobLocation = (job.location || '').toLowerCase();
                 return locations.some(loc => 
                     jobLocation.includes(loc.toLowerCase())
                 );
             })
-            : filteredByCompany;
+            : filteredByCompanyAndKeywords;
 
-        if (filteredItems.length === 0) {
-            console.log('Nothing to forward — no jobs match the specified locations.');
+        // Filter out duplicates
+        const uniqueItems = filteredByLocation.filter(job => {
+            const key = getJobKey(job);
+            if (processedJobs.has(key)) {
+                return false;
+            }
+            processedJobs.add(key);
+            return true;
+        });
+
+        if (uniqueItems.length === 0) {
+            console.log('Nothing to forward — no new jobs match the criteria.');
             return;
         }
 
-        const rowsArr = filteredItems.map(buildReportRow);
+        const rowsArr = uniqueItems.map(buildReportRow);
 
         console.log(`\n--- About to POST ${rowsArr.length} row(s) to DataGOL at:\n   ${url}\n--- Using token prefix: ${token?.slice(0, 6)}\n`);
 
