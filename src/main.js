@@ -13,7 +13,11 @@ const __dirname = dirname(__filename);
 const log = (message) => console.log(`[main] ${message}`);
 
 // Function to create a unique key for a job
-const getJobKey = (job) => `${job.title?.trim()}-${job.companyName?.trim()}-${job.location?.trim()}`;
+const getJobKey = (job) => {
+    const-jobUrl = job.jobUrl || '';
+    const-description = (job.description || '').replace(/\s+/g, ' ').slice(0, 256);
+    return `${jobUrl}-${description}`;
+};
 
 export default Actor.main(async () => {
     const input = await Actor.getInput() ?? {};
@@ -74,7 +78,7 @@ export default Actor.main(async () => {
         batches.push(runInputs.slice(i, i + MAX_CONCURRENCY));
     }
 
-    const expectedBridgeSecs = batches.length * SCRAPER_TIMEOUT + 120;
+    const expectedBridgeSecs = runInputs.length * SCRAPER_TIMEOUT + 120;
     
     // Log the expected execution time and check against current timeout
     console.log(`⏱️  Expected execution time: ${expectedBridgeSecs} seconds`);

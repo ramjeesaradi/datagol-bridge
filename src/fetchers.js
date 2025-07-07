@@ -43,29 +43,36 @@ const DEFAULT_LOCATIONS = [
 // Helper function to log messages
 const log = (message) => console.log(`[fetchers] ${message}`);
 
+const fetchData = async (tableId, entityName, defaultData, dataMapper) => {
+    const data = await fetchFromDatagol(tableId, entityName);
+
+    if (!data) {
+        log(`No ${entityName} found in API response, using defaults`);
+        return defaultData;
+    }
+
+    const mappedData = data.map(dataMapper).filter(Boolean);
+
+    if (mappedData.length === 0) {
+        log(`No ${entityName} found in API response, using defaults`);
+        return defaultData;
+    }
+
+    log(`✅ Fetched ${mappedData.length} ${entityName} from external API`);
+    return mappedData;
+};
+
 /**
  * Fetches job titles from the external API
  * @returns {Promise<string[]>} Array of job titles
  */
 export const fetchJobTitles = async () => {
-    const data = await fetchFromDatagol('395a586f-2d3e-4489-a5d9-be0039f97aa1', 'job titles');
-
-    if (!data) {
-        log('No job titles found in API response, using defaults');
-        return DEFAULT_JOB_TITLES;
-    }
-
-    const jobTitles = data
-        .map(item => item.title || item.name || item.jobTitle)
-        .filter(Boolean);
-
-    if (jobTitles.length === 0) {
-        log('No job titles found in API response, using defaults');
-        return DEFAULT_JOB_TITLES;
-    }
-
-    log(`✅ Fetched ${jobTitles.length} job titles from external API`);
-    return jobTitles;
+    return fetchData(
+        '395a586f-2d3e-4489-a5d9-be0039f97aa1',
+        'job titles',
+        DEFAULT_JOB_TITLES,
+        (item) => item.title || item.name || item.jobTitle
+    );
 };
 
 /**
@@ -73,25 +80,12 @@ export const fetchJobTitles = async () => {
  * @returns {Promise<string[]>} Array of company names to exclude
  */
 export const fetchCompetitorList = async () => {
-    const data = await fetchFromDatagol('ac27bdbc-b564-429e-815d-356d58b00d06', 'competitors');
-
-    if (!data) {
-        log('No companies found in API response, using defaults');
-        return DEFAULT_EXCLUDED_COMPANIES;
-    }
-
-    const companies = data
-        .map(item => item.company || item.name || item.companyName)
-        .filter(Boolean)
-        .map(company => company.trim());
-
-    if (companies.length === 0) {
-        log('No companies found in API response, using defaults');
-        return DEFAULT_EXCLUDED_COMPANIES;
-    }
-
-    log(`✅ Fetched ${companies.length} companies from external API`);
-    return companies;
+    return fetchData(
+        'ac27bdbc-b564-429e-815d-356d58b00d06',
+        'competitors',
+        DEFAULT_EXCLUDED_COMPANIES,
+        (item) => (item.company || item.name || item.companyName)?.trim()
+    );
 };
 
 /**

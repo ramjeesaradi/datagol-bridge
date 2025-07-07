@@ -1,70 +1,50 @@
 {
   "schemaVersion": 1,
-  "title": "Bridge input",
+  "title": "Datagol Bridge Input",
   "type": "object",
   "properties": {
     "datagolUrl": {
-      "title": "DataGOL URL",
+      "title": "Datagol API URL",
       "type": "string",
       "editor": "textfield",
       "default": "https://be-eu.datagol.ai/noCo/api/v2/workspaces/8e894b95-cc40-44f0-88d7-4aae346b0325/tables/8e71ed6d-ae6a-495c-b93b-1a9429370b56/rows",
-      "description": "URL of the DataGOL endpoint."
+      "description": "URL of the Datagol endpoint for posting job data."
     },
     "datagolToken": {
-      "title": "DataGOL token",
+      "title": "Datagol API Token",
       "type": "string",
       "editor": "hidden",
-      "default": "8c780b764720e57acbe59edbfce007f5e5814a4a42c86b319af939b787380326",
-      "description": "Authentication token for the endpoint."
+      "description": "Authentication token for the Datagol API."
     },
-    "rows": {
-      "title": "Rows",
+    "totalJobsToFetch": {
+      "title": "Total Jobs to Fetch",
       "type": "integer",
-      "default": 10,
-      "description": "Number of results to fetch per query."
+      "default": 1000,
+      "description": "Total number of job listings to fetch across all search combinations."
     },
     "scraperTimeoutSecs": {
-      "title": "Scraper timeout (secs)",
+      "title": "Scraper Timeout (seconds)",
       "type": "integer",
       "default": 600,
-      "description": "Maximum seconds to wait for each LinkedIn scraper run (max 3600, default 600)."
+      "description": "Maximum time in seconds to wait for each LinkedIn scraper run (max 3600)."
     },
     "jobTitles": {
-      "title": "Job titles",
+      "title": "Job Titles",
       "type": "array",
-      "default": [
-        "Financial controller",
-        "Business controller",
-        "Financial analyst",
-        "FP&A",
-        "Finance Business Partner",
-        "Contrôleur de gestion",
-        "Analyste Financier",
-        "Financieel analist",
-        "Financieel controller",
-        "Accountant",
-        "comptable",
-        "boekhouder",
-        "gestionnaire de dossiers",
-        "dossierbeheerder"
-      ],
-      "description": "Job titles to search for.",
+      "description": "List of job titles to search for. If not provided, titles will be fetched from the API.",
       "editor": "stringList"
     },
     "locations": {
       "title": "Locations",
       "type": "array",
-      "default": [
-        "Brussels",
-        "Namur",
-        "Charleroi",
-        "Liège",
-        "Mons",
-        "Arlon"
-      ],
-      "description": "Locations to search for.",
+      "description": "List of locations to search in. If not provided, locations will be fetched from the API.",
+      "editor": "stringList"
+    },
+    "excludedCompanies": {
+      "title": "Excluded Companies",
+      "type": "array",
+      "description": "List of company names to exclude from the search results. If not provided, the list will be fetched from the API.",
       "editor": "stringList"
     }
-  },
-  "required": []
+  }
 }
