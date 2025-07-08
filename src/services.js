@@ -1,4 +1,5 @@
 import { Actor, log } from 'apify';
+import { ApifyClient } from 'apify-client';
 import { processJobPostings, saveToDatagol } from './fetchers.js';
 
 // Function to create a unique key for a job, moved from main.js
@@ -16,6 +17,7 @@ const getJobKey = (job) => {
  */
 export async function runScraper(scraperInput, config) {
     const { scraper: scraperConfig } = config;
+    const apifyClient = new ApifyClient({ token: scraperConfig.apifyToken });
 
     const actorInput = {
         title: scraperInput.title,
@@ -24,10 +26,32 @@ export async function runScraper(scraperInput, config) {
         publishedAt: 'r86400', // 'r86400' corresponds to the last 24 hours
     };
 
-    log.info(`🚀 Running scraper with input: ${JSON.stringify(actorInput)}`);
+    // Check for a recent successful run with the same input
+    log.info(`🔎 Searching for a recent successful run for: ${JSON.stringify({ title: actorInput.title, location: actorInput.location })}`);
+    const runs = await apifyClient.actor('bebity/linkedin-jobs-scraper').runs().list({ desc: true, limit: 100 });
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const recentRun = runs.items.find(run => 
+        run.status === 'SUCCEEDED' &&
+        new Date(run.finishedAt) > twentyFourHoursAgo &&
+        run.input && // Ensure input exists before accessing properties
+        run.input.title === actorInput.title &&
+        run.input.location === actorInput.location
+    );
+
+    if (recentRun) {
+        log.info(`♻️ Found recent successful run from ${recentRun.finishedAt}. Reusing dataset ${recentRun.defaultDatasetId}.`);
+        const dataset = await Actor.openDataset(recentRun.defaultDatasetId);
+        const { items } = await dataset.getData();
+        return items;
+    }
+
+    log.info(`🚀 No recent run found. Starting a new scraper run with input: ${JSON.stringify(actorInput)}`);
+
 
     const run = await Actor.call('bebity/linkedin-jobs-scraper', actorInput, {
         token: scraperConfig.apifyToken,
+        memory: scraperConfig.memory,
     });
 
     if (run.status !== 'SUCCEEDED') {
@@ -35,7 +59,7 @@ export async function runScraper(scraperInput, config) {
         return [];
     }
 
-    log.info(`✅ Scraper run finished. Status: ${run.status}`);
+    log.info(`✅ New scraper run finished. Status: ${run.status}`);
     const { defaultDatasetId } = run;
     const dataset = await Actor.openDataset(defaultDatasetId);
     const { items } = await dataset.getData();
@@ -47,9 +71,11 @@ export async function processJobs(config) {
     const jobTitles = Array.isArray(config.filters?.jobTitles) ? config.filters.jobTitles : [];
     const locations = Array.isArray(config.filters?.locations) ? config.filters.locations : [];
 
-    for (const title of jobTitles) {
-        for (const location of locations) {
-            searchCombinations.push({ title, location });
+    for (const titleObj of jobTitles) {
+        for (const locationObj of locations) {
+            if (titleObj.title && locationObj.location) {
+                searchCombinations.push({ title: titleObj.title, location: locationObj.location });
+            }
         }
     }
 

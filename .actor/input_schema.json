@@ -84,7 +84,13 @@
       "title": "Max Concurrent Scrapers",
       "type": "integer",
       "description": "Maximum number of scrapers to run in parallel.",
-      "default": 30
+      "default": 24
+    },
+    "scraperMemory": {
+      "title": "Scraper Memory (MB)",
+      "type": "integer",
+      "description": "Memory in megabytes to allocate to each scraper run. Use numbers, not strings.",
+      "default": 256
     },
     "jobTitles": {
       "title": "Job Titles to Search",

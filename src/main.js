@@ -31,8 +31,9 @@ function getMergedConfig(input) {
         scraper: {
             totalJobsToFetch: input.totalJobsToFetch || 50,
             timeoutSecs: input.scraperTimeoutSecs || 600,
-            maxConcurrent: input.maxConcurrentScrapers || 30,
+            maxConcurrent: input.maxConcurrentScrapers || 24,
             apifyToken: input.apifyToken || process.env.APIFY_TOKEN,
+            memory: input.scraperMemory || 256,
             },
         };
 
@@ -83,6 +84,8 @@ Actor.main(async () => {
         }
 
         const jobs = await processJobs(config);
+
+        log.info(`💾 Saving ${jobs.length} jobs to Datagol and Actor dataset...`);
         await saveResults(config, jobs);
 
     } catch (error) {
