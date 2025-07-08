@@ -20,15 +20,15 @@ const __dirname = dirname(__filename);
 function getMergedConfig(input) {
     const config = {
         datagolApi: {
-            baseUrl: input.datagolApiBaseUrl || 'https://be-eu.datagol.ai/noCo/api/v2',
-            workspaceId: input.datagolApiWorkspaceId || process.env.DATAGOL_WORKSPACE_ID,
-            readToken: input.datagolReadToken || process.env.DATAGOL_READ_TOKEN,
-            writeToken: input.datagolWriteToken || process.env.DATAGOL_WRITE_TOKEN,
+            baseUrl: process.env.DATAGOL_API_BASE_URL || 'https://be-eu.datagol.ai/noCo/api/v2',
+            workspaceId: process.env.DATAGOL_WORKSPACE_ID,
+            readToken: process.env.DATAGOL_READ_TOKEN,
+            writeToken: process.env.DATAGOL_WRITE_TOKEN,
             tables: {
-                jobTitles: input.jobTitlesTableId || '395a586f-2d3e-4489-a5d9-be0039f97aa1',
-                excludedCompanies: input.excludedCompaniesTableId || 'ac27bdbc-b564-429e-815d-356d58b00d06',
-                locations: input.locationsTableId || '6122189a-764f-40a9-9721-d756b7dd3626',
-                jobPostings: input.jobPostingsTableId || 'f16a8e15-fa74-4705-8ef5-7345347f6347',
+                jobTitles: process.env.DATAGOL_JOB_TITLES_TABLE_ID || '395a586f-2d3e-4489-a5d9-be0039f97aa1',
+                excludedCompanies: process.env.DATAGOL_EXCLUDED_COMPANIES_TABLE_ID || 'ac27bdbc-b564-429e-815d-356d58b00d06',
+                locations: process.env.DATAGOL_LOCATIONS_TABLE_ID || '6122189a-764f-40a9-9721-d756b7dd3626',
+                jobPostings: process.env.DATAGOL_JOB_POSTINGS_TABLE_ID || 'f16a8e15-fa74-4705-8ef5-7345347f6347',
             },
         },
         scraper: {
@@ -36,7 +36,23 @@ function getMergedConfig(input) {
             timeoutSecs: input.scraperTimeoutSecs || 600,
             maxConcurrent: input.maxConcurrentScrapers || 30,
             apifyToken: input.apifyToken || process.env.APIFY_TOKEN,
-        },
+            },
+        };
+
+    // Log the DataGOL API configuration being used
+    log.info('DataGOL API Configuration:');
+    log.info(`  Base URL: ${config.datagolApi.baseUrl}`);
+    log.info(`  Workspace ID: ${config.datagolApi.workspaceId}`);
+    log.info(`  Read Token: ${config.datagolApi.readToken ? '***' : 'Not set'}`);
+    log.info(`  Write Token: ${config.datagolApi.writeToken ? '***' : 'Not set'}`);
+    log.info('  Table IDs:');
+    log.info(`    Job Titles: ${config.datagolApi.tables.jobTitles}`);
+    log.info(`    Excluded Companies: ${config.datagolApi.tables.excludedCompanies}`);
+    log.info(`    Locations: ${config.datagolApi.tables.locations}`);
+    log.info(`    Job Postings: ${config.datagolApi.tables.jobPostings}`);
+
+    return config;
+}
         filters: {
             jobTitles: input.jobTitles && input.jobTitles.length > 0 ? input.jobTitles : [],
             locations: input.locations && input.locations.length > 0 ? input.locations : [],

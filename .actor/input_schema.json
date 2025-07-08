@@ -23,22 +23,8 @@
       "title": "Datagol Workspace ID",
       "type": "string",
       "description": "Workspace ID in Datagol (or set DATAGOL_WORKSPACE_ID env var).",
-      "default": "",
+      "default": "8e894b95-cc40-44f0-88d7-4aae346b0325",
       "editor": "textfield"
-    },
-    "datagolReadToken": {
-      "title": "Datagol Read Token",
-      "type": "string",
-      "description": "Bearer token for reading from Datagol (or set DATAGOL_READ_TOKEN env var).",
-      "editor": "hidden",
-      "default": ""
-    },
-    "datagolWriteToken": {
-      "title": "Datagol Write Token",
-      "type": "string",
-      "description": "Auth token for writing to Datagol (or set DATAGOL_WRITE_TOKEN env var).",
-      "editor": "hidden",
-      "default": ""
     },
     "jobTitlesTableId": {
       "title": "Job Titles Table ID",
