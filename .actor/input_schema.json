@@ -3,48 +3,238 @@
   "title": "Datagol Bridge Input",
   "type": "object",
   "properties": {
-    "datagolUrl": {
-      "title": "Datagol API URL",
-      "type": "string",
-      "editor": "textfield",
-      "default": "https://be-eu.datagol.ai/noCo/api/v2/workspaces/8e894b95-cc40-44f0-88d7-4aae346b0325/tables/8e71ed6d-ae6a-495c-b93b-1a9429370b56/rows",
-      "description": "URL of the Datagol endpoint for posting job data."
-    },
-    "datagolToken": {
-      "title": "Datagol API Token",
-      "type": "string",
-      "editor": "hidden",
-      "description": "Authentication token for the Datagol API."
-    },
-    "totalJobsToFetch": {
-      "title": "Total Jobs to Fetch",
+    "timeout": {
+      "title": "Timeout (seconds)",
       "type": "integer",
-      "default": 1000,
-      "description": "Total number of job listings to fetch across all search combinations."
+      "default": 3600,
+      "minimum": 60,
+      "maximum": 86400,
+      "description": "Maximum run time in seconds (1 hour = 3600 seconds)",
+      "prefill": 3600
     },
-    "scraperTimeoutSecs": {
-      "title": "Scraper Timeout (seconds)",
-      "type": "integer",
-      "default": 600,
-      "description": "Maximum time in seconds to wait for each LinkedIn scraper run (max 3600)."
+    "datagolApi": {
+      "type": "object",
+      "title": "Datagol API Configuration",
+      "description": "Configuration for connecting to the Datagol API",
+      "properties": {
+        "baseUrl": {
+          "type": "string",
+          "default": "https://be-eu.datagol.ai/noCo/api/v2",
+          "description": "Base URL for the Datagol API"
+        },
+        "workspaceId": {
+          "type": "string",
+          "description": "Workspace ID in Datagol (set via environment variable DATAGOL_WORKSPACE_ID)"
+        },
+        "tables": {
+          "type": "object",
+          "properties": {
+            "jobTitles": {
+              "type": "string",
+              "default": "395a586f-2d3e-4489-a5d9-be0039f97aa1",
+              "description": "Table ID for job titles"
+            },
+            "competitors": {
+              "type": "string",
+              "default": "ac27bdbc-b564-429e-815d-356d58b00d06",
+              "description": "Table ID for competitor list"
+            },
+            "locations": {
+              "type": "string",
+              "default": "6122189a-764f-40a9-9721-d756b7dd3626",
+              "description": "Table ID for locations"
+            },
+            "jobPostings": {
+              "type": "string",
+              "default": "f16a8e15-fa74-4705-8ef5-7345347f63478",
+              "description": "Table ID for job postings"
+            }
+          }
+        },
+        "readToken": {
+          "type": "string",
+          "description": "Bearer token for reading from the Datagol API (set via environment variable DATAGOL_READ_TOKEN)",
+          "editor": "hidden"
+        },
+        "writeToken": {
+          "type": "string",
+          "description": "Authentication token for writing to the Datagol API (set via environment variable DATAGOL_WRITE_TOKEN)",
+          "editor": "hidden"
+        }
+      }
     },
-    "jobTitles": {
-      "title": "Job Titles",
-      "type": "array",
-      "description": "List of job titles to search for. If not provided, titles will be fetched from the API.",
-      "editor": "stringList"
+    "scraper": {
+      "type": "object",
+      "title": "Scraper Configuration",
+      "properties": {
+        "totalJobsToFetch": {
+          "type": "integer",
+          "default": 50,
+          "minimum": 1,
+          "description": "Total number of job listings to fetch across all search combinations."
+        },
+        "timeoutSecs": {
+          "type": "integer",
+          "default": 600,
+          "maximum": 3600,
+          "description": "Maximum time in seconds to wait for each LinkedIn scraper run."
+        },
+        "maxConcurrent": {
+          "type": "integer",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum number of concurrent scraper instances"
+        }
+      }
     },
-    "locations": {
-      "title": "Locations",
-      "type": "array",
-      "description": "List of locations to search in. If not provided, locations will be fetched from the API.",
-      "editor": "stringList"
+    "filters": {
+      "type": "object",
+      "title": "Job Search Filters",
+      "properties": {
+        "jobTitles": {
+          "title": "Job Titles",
+          "type": "array",
+          "default": [
+            "Financial controller",
+            "Business controller",
+            "Financial analyst",
+            "FP&A",
+            "Finance Business Partner",
+            "Contrôleur de gestion",
+            "Analyste Financier",
+            "Financieel analist",
+            "Financieel controller",
+            "Accountant",
+            "comptable",
+            "boekhouder",
+            "gestionnaire de dossiers",
+            "dossierbeheerder"
+          ],
+          "description": "List of job titles to search for. Will be fetched from API if not provided.",
+          "editor": "stringList"
+        },
+        "locations": {
+          "title": "Locations",
+          "type": "array",
+          "default": [
+            "Brussels",
+            "Namur",
+            "Charleroi",
+            "Liège",
+            "Mons",
+            "Arlon"
+          ],
+          "description": "List of locations to search in. Will be fetched from API if not provided.",
+          "editor": "stringList"
+        },
+        "excludedCompanies": {
+          "title": "Excluded Companies",
+          "type": "array",
+          "default": [
+            "Walt & Spencer",
+            "Flipper",
+            "Ufinity",
+            "JH Partners",
+            "Recruitment Sisters",
+            "Sander",
+            "Robert Walters",
+            "Robert Half",
+            "Michael Page",
+            "Connescence",
+            "Asteria HR Group",
+            "Gentis",
+            "Kingsley & Partners",
+            "Dixon",
+            "Generations Recruitment",
+            "Alpen",
+            "Abiomis",
+            "Arbalett",
+            "Wolfson",
+            "Levy Global",
+            "Le Grand & Associates",
+            "Argateam",
+            "Argafin",
+            "Austin Bright",
+            "Habeas",
+            "Pensaert & Partners",
+            "Financial Talents",
+            "Konvert",
+            "Linking Talents",
+            "USG",
+            "Cossel",
+            "Pegasus",
+            "Flowtech",
+            "Hiring",
+            "CTRL F",
+            "Connect",
+            "Bakker & Partners",
+            "Elton Baker",
+            "GBL Staffing Solutions",
+            "ITZU",
+            "Randstad",
+            "Adecco",
+            "Manpower",
+            "FIXX Recruitment",
+            "S&you Belgium",
+            "Konvert",
+            "Kingfisher",
+            "Dixon",
+            "Pragmist",
+            "Unipartners",
+            "Hays",
+            "YER",
+            "Hudson",
+            "Mercuri Urval",
+            "ACCA careers",
+            "Talentus",
+            "Azuro",
+            "Airswift",
+            "AEROCONTACT",
+            "Broadgate",
+            "Winmatch",
+            "Kingsley",
+            "Daoust",
+            "Keller Executive",
+            "Page Executive",
+            "Belgie Vacature",
+            "Solis Talents",
+            "Anderson",
+            "Morgan Philips",
+            "Synergy",
+            "Belgie Vacature",
+            "Shaw Daniels Solutions"
+          ],
+          "description": "List of company names to exclude from search results. Will be fetched from API if not provided.",
+          "editor": "stringList"
+        },
+        "postedInLastHours": {
+          "type": "integer",
+          "default": 24,
+          "minimum": 1,
+          "description": "Only fetch jobs posted in the last N hours"
+        }
+      }
     },
-    "excludedCompanies": {
-      "title": "Excluded Companies",
-      "type": "array",
-      "description": "List of company names to exclude from the search results. If not provided, the list will be fetched from the API.",
-      "editor": "stringList"
+    "deduplication": {
+      "type": "object",
+      "title": "Deduplication Settings",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable deduplication of job postings"
+        },
+        "fields": {
+          "type": "array",
+          "default": [
+            "title",
+            "company",
+            "location"
+          ],
+          "description": "Fields to use for deduplication"
+        }
+      }
     }
   }
-}
+}  
