@@ -35,7 +35,7 @@ async function fetchFromDatagol(datagolApi, entityType) {
         log.info(`Fetching ${entityType} from Datagol API...`);
 
         let requestOptions = {
-            headers: { 'Authorization': `Bearer ${readToken.replace('Bearer ', '')}` }, // Remove duplicated 'Bearer '
+            headers: { 'Authorization': `Bearer ${readToken}` }, // Ensure Bearer token is correctly sent
             responseType: 'json',
             timeout: { request: 10000 },
         };

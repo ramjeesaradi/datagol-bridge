@@ -1,12 +1,12 @@
 {
     "actorSpecification": 1,
     "name": "datagol-bridge",
-    "title": "Scrape single page in JavaScript",
-    "description": "Scrape data from single page with provided URL.",
+    "title": "DataGOL Job Scraper Configuration",
+    "description": "Fetches job titles, locations, and excluded companies from DataGOL API to configure job scraping operations.",
     "version": "0.0",
     "meta": {
         "templateId": "js-start"
     },
     "input": "./input_schema.json",
-    "dockerfile": "../Dockerfile"
+    "image": "registry.apify.com/ramjeesaradi/datagol-bridge:latest"
 }
