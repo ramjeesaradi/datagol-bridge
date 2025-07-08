@@ -67,6 +67,7 @@ Actor.main(async () => {
         log.info('Using configuration:', safeConfig);
 
         log.info('🔄 Fetching filter values...');
+        config.filters = {}; // Initialize filters object
         const [jobTitles, locations, excludedCompanies] = await Promise.all([
             getFilterValues(config, 'jobTitles'),
             getFilterValues(config, 'locations'),

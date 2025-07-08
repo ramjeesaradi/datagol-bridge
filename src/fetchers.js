@@ -40,22 +40,27 @@ async function fetchFromDatagol(datagolApi, entityType) {
             timeout: { request: 10000 },
         };
 
-        // All entity types now use the same endpoint structure and POST method
-        url = `${baseUrl}/workspaces/${workspaceId}/tables/${tableId}/data/external`;
-        requestOptions.json = { requestPageDetails: { pageNumber: 1, pageSize: 500 } };
-        requestOptions.headers['Content-Type'] = 'application/json';
-        response = await got.post(url, requestOptions);
+        if (entityType === 'locations') {
+            // Locations are fetched from a different endpoint with a GET request
+            url = `${baseUrl}/workbooks/${tableId}/data`;
+            method = 'GET';
+            response = await got.get(url, requestOptions);
+        } else {
+            // Other entities are fetched with a POST request
+            url = `${baseUrl}/workspaces/${workspaceId}/tables/${tableId}/data/external`;
+            method = 'POST';
+            requestOptions.json = { requestPageDetails: { pageNumber: 1, pageSize: 500 } };
+            requestOptions.headers['Content-Type'] = 'application/json';
+            response = await got.post(url, requestOptions);
+        }
 
-
-
-        log.info(`Raw response for ${entityType}:`, response.body);
         const responseData = response.body;
         let items = [];
 
         if (responseData?.data && Array.isArray(responseData.data)) {
             items = responseData.data;
         } else if (responseData?.items) {
-            items = response.body.items;
+            items = responseData.items;
         } else if (Array.isArray(responseData)) {
             items = responseData;
         }
@@ -63,7 +68,8 @@ async function fetchFromDatagol(datagolApi, entityType) {
         log.info(`✅ Fetched ${items.length} ${entityType} from Datagol API`);
         return items;
     } catch (error) {
-        log.error(`❌ Failed to fetch ${entityType} from Datagol API: ${error.message}`);
+        const errorMessage = error.response ? `Response code ${error.response.statusCode} (${error.response.body})` : error.message;
+        log.error(`❌ Failed to fetch ${entityType} from Datagol API: ${errorMessage}`);
         return []; // Return empty array on error to allow fallback
     }
 }
