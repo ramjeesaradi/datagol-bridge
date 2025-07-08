@@ -1,13 +1,30 @@
-# configurations
+# IDE configurations
 .idea
 
-# crawlee and apify storage folders
+# Apify/Crawlee storage folders
 apify_storage
 crawlee_storage
 storage
 
-# installed files
+# Dependencies
 node_modules
 
-# git folder
+# Git folder
 .git
+
+# Docker files
+.dockerignore
+Dockerfile
+
+# Local environment variables
+.env
+.env.*
+!/.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store

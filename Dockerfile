@@ -3,29 +3,15 @@
 # You can also use any other image from Docker Hub.
 FROM apify/actor-node:22
 
-# Check preinstalled packages
-RUN npm ls crawlee apify puppeteer playwright
-
-# Copy just package.json and package-lock.json
-# to speed up the build using Docker layer cache.
+# Copy package.json and package-lock.json to leverage Docker layer caching.
 COPY package*.json ./
 
-# Install NPM packages, skip optional and development dependencies to
-# keep the image small. Avoid logging too much and print the dependency
-# tree for debugging
-RUN npm --quiet set progress=false \
-    && npm install --omit=dev --omit=optional \
-    && echo "Installed NPM packages:" \
-    && (npm list --omit=dev --all || true) \
-    && echo "Node.js version:" \
-    && node --version \
-    && echo "NPM version:" \
-    && npm --version \
-    && rm -r ~/.npm
+# Install production dependencies.
+RUN npm install --omit=dev --omit=optional && rm -rf ~/.npm
 
-# Next, copy the remaining files and directories with the source code.
-# Since we do this after NPM install, quick build will be really fast
-# for most source file changes.
+# Copy the rest of the source code.
+# This step is separate from the npm install to ensure that changes to
+# source code don't invalidate the dependency cache.
 COPY . ./
 
 # Create and run as a non-root user.
