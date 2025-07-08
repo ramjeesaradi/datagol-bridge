@@ -18,19 +18,16 @@ export async function runScraper(scraperInput, config) {
     const { scraper: scraperConfig } = config;
 
     const actorInput = {
-        jobTitles: [scraperInput.title],
-        locations: [scraperInput.location],
-        maxJobs: scraperInput.limit || 5,
-        runInParallel: false,
-        maxConcurrency: 1,
-        saveOnlyUniqueJobs: true,
-        postedInLastHours: scraperConfig.postedInLastHours || 24,
+        title: scraperInput.title,
+        location: scraperInput.location,
+        rows: scraperInput.limit || 50, // 'rows' is the correct parameter for the number of jobs
+        publishedAt: 'r86400', // 'r86400' corresponds to the last 24 hours
     };
 
     log.info(`🚀 Running scraper with input: ${JSON.stringify(actorInput)}`);
 
     const run = await Actor.call('bebity/linkedin-jobs-scraper', actorInput, {
-        timeoutSecs: scraperConfig.timeoutSecs || 600,
+        token: scraperConfig.apifyToken,
     });
 
     if (run.status !== 'SUCCEEDED') {

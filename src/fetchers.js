@@ -12,8 +12,7 @@ dotenv.config();
  * @param {string} entityType - Type of entity to fetch ('jobTitles', 'excludedCompanies', 'locations')
  * @returns {Promise<Array<any>>} A promise that resolves to an array of data items
  */
-async function fetchFromDatagol(config, entityType) {
-    const { datagolApi } = config;
+async function fetchFromDatagol(datagolApi, entityType) {
     const { baseUrl, workspaceId, readToken, tables } = datagolApi;
     const tableId = tables[entityType];
 
@@ -27,27 +26,38 @@ async function fetchFromDatagol(config, entityType) {
         return [];
     }
 
-    const url = `${baseUrl}/workspaces/${workspaceId}/tables/${tableId}/data/external`;
-    const headers = { 'Authorization': `Bearer ${readToken}`, 'Content-Type': 'application/json' };
+    let url;
+    let method;
+    const headers = { 'Authorization': `Bearer ${readToken}` };
+    let response;
 
     try {
         log.info(`Fetching ${entityType} from Datagol API...`);
-        const response = await got.post(url, {
-            headers,
-            json: { requestPageDetails: { pageNumber: 1, pageSize: 500 } },
+
+        let requestOptions = {
+            headers: { 'Authorization': `Bearer ${readToken.replace('Bearer ', '')}` }, // Remove duplicated 'Bearer '
             responseType: 'json',
             timeout: { request: 10000 },
-        });
+        };
 
+        // All entity types now use the same endpoint structure and POST method
+        url = `${baseUrl}/workspaces/${workspaceId}/tables/${tableId}/data/external`;
+        requestOptions.json = { requestPageDetails: { pageNumber: 1, pageSize: 500 } };
+        requestOptions.headers['Content-Type'] = 'application/json';
+        response = await got.post(url, requestOptions);
+
+
+
+        log.info(`Raw response for ${entityType}:`, response.body);
         const responseData = response.body;
         let items = [];
 
-        if (Array.isArray(responseData)) {
-            items = responseData;
-        } else if (responseData?.data && Array.isArray(responseData.data)) {
+        if (responseData?.data && Array.isArray(responseData.data)) {
             items = responseData.data;
-        } else if (responseData?.items && Array.isArray(responseData.items)) {
-            items = responseData.items;
+        } else if (responseData?.items) {
+            items = response.body.items;
+        } else if (Array.isArray(responseData)) {
+            items = responseData;
         }
 
         log.info(`✅ Fetched ${items.length} ${entityType} from Datagol API`);
@@ -139,22 +149,47 @@ function processJobPostings(config, jobPostings) {
  * @returns {Promise<Array>} Array of filter values
  */
 async function getFilterValues(config, filterType) {
-    const { filters } = config;
-    
-    // If values are provided in config, use them
-    if (filters[filterType] && Array.isArray(filters[filterType]) && filters[filterType].length > 0) {
-        return filters[filterType];
+    const { filters, datagolApi } = config;
+    let apiEntityType;
+
+    switch (filterType) {
+        case 'jobTitles':
+            apiEntityType = 'jobTitles';
+            break;
+        case 'locations':
+            apiEntityType = 'locations';
+            break;
+        case 'excludedCompanies':
+            apiEntityType = 'excludedCompanies';
+            break;
+        default:
+            log.warning(`Unknown filter type: ${filterType}`);
+            return [];
     }
 
-    // Otherwise try to fetch from API
-    try {
-        // Map competitors to excludedCompanies for backward compatibility
-        const apiEntityType = filterType === 'excludedCompanies' ? 'competitors' : filterType;
-        return await fetchFromDatagol(config, apiEntityType);
-    } catch (error) {
-        log(`⚠️ Using default values for ${filterType} due to API error`);
-        // Return empty array to use schema defaults
-        return [];
+    // Try fetching from API
+    if (datagolApi?.readToken && datagolApi?.workspaceId) {
+        try {
+            return await fetchFromDatagol(config.datagolApi, apiEntityType);
+        } catch (error) {
+
+            // Return empty array to use schema defaults
+            return [];
+        }
+    }
+
+    // Fallback to static defaults if API not configured or failed
+    log.info(`Using static default values for ${filterType}.`);
+
+    switch (filterType) {
+        case 'jobTitles':
+            return filters.jobTitles || [];
+        case 'locations':
+            return filters.locations || [];
+        case 'excludedCompanies':
+            return filters.excludedCompanies || [];
+        default:
+            return [];
     }
 }
 
@@ -198,25 +233,20 @@ const fetchData = async (config, tableId, entityName, defaultData, dataMapper) =
  * @returns {Promise<string[]>} Array of job titles
  */
 export const fetchJobTitles = async (config) => {
-    const items = await fetchFromDatagol(config, 'jobTitles');
+    const items = await fetchFromDatagol(config.datagolApi, 'jobTitles');
     return items.map(item => item.title || item.name || item.jobTitle).filter(Boolean);
 };
-
-/**
+/** 
  * Fetches the excluded companies list from the external API
  * @returns {Promise<string[]>} Array of company names to exclude
  */
 export const fetchExcludedCompanies = async (config) => {
-    const items = await fetchFromDatagol(config, 'excludedCompanies');
+    const items = await fetchFromDatagol(config.datagolApi, 'excludedCompanies');
     return items.map(item => (item.company || item.name || item.companyName)?.trim()).filter(Boolean);
 };
 
-/**
- * Fetches locations from the external API
- * @returns {Promise<string[]>} Array of location names
- */
 export const fetchLocations = async (config) => {
-    const items = await fetchFromDatagol(config, 'locations');
+    const items = await fetchFromDatagol(config.datagolApi, 'locations');
     const locations = items.map(item => item.location || item.city || item.name || item.title).filter(Boolean);
     return [...new Set(locations)]; // Return unique locations
 };
@@ -256,8 +286,8 @@ export async function saveToDatagol(config, jobs) {
 
     log.info(`Saving ${jobs.length} jobs to Datagol...`);
 
-    for (const job of jobs) {
-        const row = buildReportRow(job);
+    for (const [index, job] of jobs.entries()) {
+        const row = buildReportRow(job, index);
         try {
             const response = await got.post(url, {
                 headers,

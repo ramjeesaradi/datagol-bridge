@@ -1,6 +1,6 @@
-export function buildReportRow(job) {
+export function buildReportRow(job, position) {
     return {
-        position: 0,
+        position: position,
         cellValues: {
             title: job.title ?? '',
             location: job.location ?? '',

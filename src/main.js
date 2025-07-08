@@ -26,7 +26,7 @@ function getMergedConfig(input) {
             writeToken: input.datagolWriteToken || process.env.DATAGOL_WRITE_TOKEN,
             tables: {
                 jobTitles: input.jobTitlesTableId || '395a586f-2d3e-4489-a5d9-be0039f97aa1',
-                competitors: input.competitorsTableId || 'ac27bdbc-b564-429e-815d-356d58b00d06',
+                excludedCompanies: input.excludedCompaniesTableId || 'ac27bdbc-b564-429e-815d-356d58b00d06',
                 locations: input.locationsTableId || '6122189a-764f-40a9-9721-d756b7dd3626',
                 jobPostings: input.jobPostingsTableId || 'f16a8e15-fa74-4705-8ef5-7345347f6347',
             },
@@ -35,6 +35,7 @@ function getMergedConfig(input) {
             totalJobsToFetch: input.totalJobsToFetch || 50,
             timeoutSecs: input.scraperTimeoutSecs || 600,
             maxConcurrent: input.maxConcurrentScrapers || 3,
+            apifyToken: input.apifyToken || process.env.APIFY_TOKEN,
         },
         filters: {
             jobTitles: input.jobTitles && input.jobTitles.length > 0 ? input.jobTitles : [],

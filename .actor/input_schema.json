@@ -51,10 +51,10 @@
             "prefill": "395a586f-2d3e-4489-a5d9-be0039f97aa1",
             "editor": "textfield"
         },
-        "competitorsTableId": {
-            "title": "Competitors Table ID",
+        "excludedCompaniesTableId": {
+            "title": "Excluded Companies Table ID",
             "type": "string",
-            "description": "Datagol table ID for the competitor list.",
+            "description": "Datagol table ID for the excluded companies list.",
             "default": "ac27bdbc-b564-429e-815d-356d58b00d06",
             "prefill": "ac27bdbc-b564-429e-815d-356d58b00d06",
             "editor": "textfield"
