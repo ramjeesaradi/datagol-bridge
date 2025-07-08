@@ -34,7 +34,7 @@ function getMergedConfig(input) {
         scraper: {
             totalJobsToFetch: input.totalJobsToFetch || 50,
             timeoutSecs: input.scraperTimeoutSecs || 600,
-            maxConcurrent: input.maxConcurrentScrapers || 3,
+            maxConcurrent: input.maxConcurrentScrapers || 30,
             apifyToken: input.apifyToken || process.env.APIFY_TOKEN,
         },
         filters: {
