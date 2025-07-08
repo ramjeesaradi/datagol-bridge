@@ -1,208 +1,139 @@
 {
-  "schemaVersion": 1,
-  "title": "Datagol Bridge Input",
-  "type": "object",
-  "properties": {
-    "timeout": {
-      "title": "Timeout (seconds)",
-      "type": "integer",
-      "default": 3600,
-      "minimum": 60,
-      "maximum": 86400,
-      "description": "Maximum run time in seconds (1 hour = 3600 seconds)",
-      "prefill": 3600
-    },
-    "datagolApi": {
-      "type": "object",
-      "title": "Datagol API Configuration",
-      "description": "Configuration for connecting to the Datagol API",
-      "properties": {
-        "baseUrl": {
-          "type": "string",
-          "default": "https://be-eu.datagol.ai/noCo/api/v2",
-          "description": "Base URL for the Datagol API"
+    "title": "Datagol Bridge Input",
+    "description": "Actor to bridge LinkedIn job scrapes with Datagol.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "timeout": {
+            "title": "Actor Timeout (seconds)",
+            "type": "integer",
+            "description": "Maximum run time for the entire actor in seconds.",
+            "default": 3600,
+            "prefill": 3600,
+            "minimum": 60,
+            "maximum": 86400
         },
-        "workspaceId": {
-          "type": "string",
-          "description": "Workspace ID in Datagol (set via environment variable DATAGOL_WORKSPACE_ID)",
-          "editor": "textfield"
+        "datagolApiBaseUrl": {
+            "title": "Datagol API Base URL",
+            "type": "string",
+            "description": "Base URL for the Datagol API.",
+            "default": "https://be-eu.datagol.ai/noCo/api/v2",
+            "prefill": "https://be-eu.datagol.ai/noCo/api/v2"
         },
-        "tables": {
-          "type": "object",
-          "title": "Table IDs",
-          "properties": {
-            "jobTitles": {
-              "type": "string",
-              "default": "395a586f-2d3e-4489-a5d9-be0039f97aa1",
-              "description": "Table ID for job titles"
-            },
-            "competitors": {
-              "type": "string",
-              "default": "ac27bdbc-b564-429e-815d-356d58b00d06",
-              "description": "Table ID for competitor list"
-            },
-            "locations": {
-              "type": "string",
-              "default": "6122189a-764f-40a9-9721-d756b7dd3626",
-              "description": "Table ID for locations"
-            },
-            "jobPostings": {
-              "type": "string",
-              "default": "f16a8e15-fa74-4705-8ef5-7345347f6347",
-              "description": "Table ID for job postings"
-            }
-          }
+        "datagolApiWorkspaceId": {
+            "title": "Datagol Workspace ID",
+            "type": "string",
+            "description": "Workspace ID in Datagol (or set DATAGOL_WORKSPACE_ID env var).",
+            "default": "",
+            "prefill": ""
         },
-        "readToken": {
-          "type": "string",
-          "description": "Bearer token for reading from the Datagol API (set via environment variable DATAGOL_READ_TOKEN)",
-          "editor": "hidden"
+        "datagolReadToken": {
+            "title": "Datagol Read Token",
+            "type": "string",
+            "description": "Bearer token for reading from Datagol (or set DATAGOL_READ_TOKEN env var).",
+            "editor": "hidden",
+            "default": ""
         },
-        "writeToken": {
-          "type": "string",
-          "description": "Authentication token for writing to the Datagol API (set via environment variable DATAGOL_WRITE_TOKEN)",
-          "editor": "hidden"
-        }
-      }
-    },
-    "scraper": {
-      "type": "object",
-      "title": "Scraper Configuration",
-      "properties": {
+        "datagolWriteToken": {
+            "title": "Datagol Write Token",
+            "type": "string",
+            "description": "Auth token for writing to Datagol (or set DATAGOL_WRITE_TOKEN env var).",
+            "editor": "hidden",
+            "default": ""
+        },
+        "jobTitlesTableId": {
+            "title": "Job Titles Table ID",
+            "type": "string",
+            "description": "Datagol table ID for job titles.",
+            "default": "395a586f-2d3e-4489-a5d9-be0039f97aa1",
+            "prefill": "395a586f-2d3e-4489-a5d9-be0039f97aa1"
+        },
+        "competitorsTableId": {
+            "title": "Competitors Table ID",
+            "type": "string",
+            "description": "Datagol table ID for the competitor list.",
+            "default": "ac27bdbc-b564-429e-815d-356d58b00d06",
+            "prefill": "ac27bdbc-b564-429e-815d-356d58b00d06"
+        },
+        "locationsTableId": {
+            "title": "Locations Table ID",
+            "type": "string",
+            "description": "Datagol table ID for locations.",
+            "default": "6122189a-764f-40a9-9721-d756b7dd3626",
+            "prefill": "6122189a-764f-40a9-9721-d756b7dd3626"
+        },
+        "jobPostingsTableId": {
+            "title": "Job Postings Table ID",
+            "type": "string",
+            "description": "Datagol table ID for saving job postings.",
+            "default": "f16a8e15-fa74-4705-8ef5-7345347f6347",
+            "prefill": "f16a8e15-fa74-4705-8ef5-7345347f6347"
+        },
         "totalJobsToFetch": {
-          "type": "integer",
-          "default": 50,
-          "minimum": 1,
-          "description": "Total number of job listings to fetch across all search combinations.",
-          "prefill": 50
+            "title": "Total Jobs to Fetch",
+            "type": "integer",
+            "description": "Total number of jobs to fetch across all searches.",
+            "default": 50,
+            "prefill": 50
         },
-        "timeoutSecs": {
-          "type": "integer",
-          "default": 600,
-          "minimum": 60,
-          "maximum": 3600,
-          "description": "Maximum time in seconds to wait for each LinkedIn scraper run.",
-          "prefill": 600
+        "scraperTimeoutSecs": {
+            "title": "Scraper Timeout (seconds)",
+            "type": "integer",
+            "description": "Timeout for each individual LinkedIn scraper run.",
+            "default": 600,
+            "prefill": 600
         },
-        "maxConcurrent": {
-          "type": "integer",
-          "default": 3,
-          "minimum": 1,
-          "maximum": 10,
-          "description": "Maximum number of concurrent scraper instances",
-          "prefill": 3
-        }
-      }
-    },
-    "filters": {
-      "type": "object",
-      "title": "Job Search Filters",
-      "properties": {
+        "maxConcurrentScrapers": {
+            "title": "Max Concurrent Scrapers",
+            "type": "integer",
+            "description": "Maximum number of scrapers to run in parallel.",
+            "default": 3,
+            "prefill": 3
+        },
         "jobTitles": {
-          "title": "Job Titles",
-          "type": "array",
-          "default": [
-            "Financial controller",
-            "Business controller",
-            "FP&A manager",
-            "Financial analyst",
-            "Finance manager"
-          ],
-          "description": "List of job titles to search for",
-          "editor": "stringList"
+            "title": "Job Titles to Search",
+            "type": "array",
+            "description": "List of job titles to search for. Overrides API fetch.",
+            "editor": "stringList",
+            "default": []
         },
         "locations": {
-          "title": "Locations",
-          "type": "array",
-          "default": [
-            "Switzerland",
-            "Germany",
-            "France",
-            "United Kingdom",
-            "Netherlands"
-          ],
-          "description": "List of locations to search in",
-          "editor": "stringList"
+            "title": "Locations to Search",
+            "type": "array",
+            "description": "List of locations to search in. Overrides API fetch.",
+            "editor": "stringList",
+            "default": []
         },
         "excludedCompanies": {
-          "title": "Excluded Companies",
-          "type": "array",
-          "default": [
-            "PwC",
-            "Deloitte",
-            "EY",
-            "KPMG",
-            "Accenture",
-            "Hiring",
-            "CTRL F",
-            "Connect",
-            "Bakker & Partners",
-            "Elton Baker",
-            "GBL Staffing Solutions",
-            "ITZU",
-            "Randstad",
-            "Adecco",
-            "Manpower",
-            "FIXX Recruitment",
-            "S&you Belgium",
-            "Konvert",
-            "Kingfisher",
-            "Dixon",
-            "Pragmist",
-            "Unipartners",
-            "Hays",
-            "YER",
-            "Hudson",
-            "Mercuri Urval",
-            "ACCA careers",
-            "Talentus",
-            "Azuro",
-            "Airswift",
-            "AEROCONTACT",
-            "Broadgate",
-            "Winmatch",
-            "Kingsley",
-            "Daoust",
-            "Keller Executive",
-            "Page Executive",
-            "Belgie Vacature",
-            "Solis Talents",
-            "Anderson",
-            "Morgan Philips",
-            "Synergy",
-            "Belgie Vacature",
-            "Shaw Daniels Solutions"
-          ],
-          "description": "List of company names to exclude from search results. Will be fetched from API if not provided.",
-          "editor": "stringList"
+            "title": "Companies to Exclude",
+            "type": "array",
+            "description": "List of companies to exclude. Overrides API fetch.",
+            "editor": "stringList",
+            "default": []
         },
         "postedInLastHours": {
-          "type": "integer",
-          "default": 24,
-          "minimum": 1,
-          "description": "Only fetch jobs posted in the last N hours"
-        }
-      }
-    },
-    "deduplication": {
-      "type": "object",
-      "title": "Deduplication Settings",
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable deduplication of job postings"
+            "title": "Posted in Last (Hours)",
+            "type": "integer",
+            "description": "Only include jobs posted in the last X hours.",
+            "default": 24,
+            "prefill": 24
         },
-        "fields": {
-          "type": "array",
-          "default": [
-            "title",
-            "company",
-            "location"
-          ],
-          "description": "Fields to use for deduplication"
+        "enableDeduplication": {
+            "title": "Enable Deduplication",
+            "type": "boolean",
+            "description": "Enable deduplication of job postings.",
+            "default": true
+        },
+        "deduplicationFields": {
+            "title": "Deduplication Fields",
+            "type": "array",
+            "description": "Fields to use for deduplication.",
+            "editor": "stringList",
+            "default": [
+                "title",
+                "company",
+                "location"
+            ]
         }
-      }
     }
-  }
-}  
+}
