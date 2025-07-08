@@ -1,44 +1,181 @@
-import { fetchFromDatagol } from './services.js';
+import got from 'got';
+import dotenv from 'dotenv';
 
-// Default values for fallback
-const DEFAULT_JOB_TITLES = [
-    'Financial controller',
-    'Business controller',
-    'Financial analyst',
-    'FP&A',
-    'Finance Business Partner',
-    'Contrôleur de gestion',
-    'Analyste Financier',
-    'Financieel analist',
-    'Financieel controller',
-    'Accountant',
-    'comptable',
-    'boekhouder',
-    'gestionnaire de dossiers',
-    'dossierbeheerder',
-];
+// Load environment variables
+dotenv.config();
 
-const DEFAULT_EXCLUDED_COMPANIES = [
-    'Deloitte',
-    'PwC',
-    'EY',
-    'KPMG',
-    'Accenture',
-    'Deloitte Belgium',
-    'PwC Belgium',
-    'EY Belgium',
-    'KPMG Belgium',
-    'Accenture Belgium'
-];
+/**
+ * Fetches data from a Datagol table.
+ * @param {Object} config - Configuration object from input schema
+ * @param {string} entityType - Type of entity to fetch ('jobTitles', 'excludedCompanies', 'locations')
+ * @returns {Promise<Array<any>>} A promise that resolves to an array of data items
+ */
+async function fetchFromDatagol(config, entityType) {
+    const { datagolApi } = config;
+    const { baseUrl, workspaceId, readToken, tables } = datagolApi;
+    const tableId = tables[entityType];
 
-const DEFAULT_LOCATIONS = [
-    'Brussels',
-    'Namur',
-    'Charleroi',
-    'Liège',
-    'Mons',
-    'Arlon',
-];
+    if (!workspaceId || !readToken) {
+        log(`❌ Missing workspaceId or readToken for fetching ${entityType}. Check your environment variables or input configuration.`);
+        throw new Error('Missing Datagol API credentials.');
+    }
+
+    const url = `${baseUrl}/workspaces/${workspaceId}/tables/${tableId}/data/external`;
+
+    const headers = {
+        'Authorization': `Bearer ${readToken}`,
+        'Content-Type': 'application/json'
+    };
+    
+    log(`Using Authorization: Bearer token for reading ${entityType}`);
+
+    try {
+        log(`Fetching ${entityType} from Datagol API...`);
+        const response = await got.post(url, {
+            headers,
+            json: { requestPageDetails: { pageNumber: 1, pageSize: 500 } },
+            responseType: 'json',
+            timeout: { request: 10000 },
+            throwHttpErrors: false
+        });
+
+        if (response.statusCode !== 200) {
+            throw new Error(`API returned status ${response.statusCode}`);
+        }
+
+        const responseData = response.body;
+        let items = [];
+
+        // Handle different response formats
+        if (Array.isArray(responseData)) {
+            items = responseData;
+        } else if (responseData?.data && Array.isArray(responseData.data)) {
+            items = responseData.data;
+        } else if (responseData?.items && Array.isArray(responseData.items)) {
+            items = responseData.items;
+        }
+
+        log(`✅ Fetched ${items.length} ${entityType} from Datagol API`);
+        return items.map(item => {
+            // Extract the name field if it exists, otherwise use the entire item
+            if (item && typeof item === 'object' && 'name' in item) {
+                return item.name;
+            }
+            return item;
+        });
+    } catch (error) {
+        log(`❌ Failed to fetch ${entityType} from Datagol API: ${error.message}`);
+        throw error; // Let the caller handle the fallback
+    }
+}
+
+/**
+ * Deduplicates an array of items based on specified fields
+ * @param {Array} items - Array of items to deduplicate
+ * @param {Array} fields - Array of field names to use for deduplication
+ * @returns {Array} Deduplicated array
+ */
+function deduplicateItems(items, fields) {
+    if (!Array.isArray(items) || items.length === 0) return [];
+    if (!fields || fields.length === 0) return items;
+
+    const seen = new Set();
+    return items.filter(item => {
+        // Create a composite key from the specified fields
+        const key = fields
+            .map(field => (item[field] || '').toString().toLowerCase().trim())
+            .join('|');
+        
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+/**
+ * Gets filtered and deduplicated job postings
+ * @param {Object} config - Configuration object from input schema
+ * @param {Array} jobPostings - Array of job postings to process
+ * @returns {Array} Processed job postings
+ */
+function processJobPostings(config, jobPostings) {
+    if (!Array.isArray(jobPostings) || jobPostings.length === 0) {
+        return [];
+    }
+
+    const { filters, deduplication } = config;
+    const { excludedCompanies, postedInLastHours } = filters;
+    const now = new Date();
+    const postedAfter = new Date(now - (postedInLastHours * 60 * 60 * 1000));
+
+    // Filter out excluded companies and old postings
+    const filtered = jobPostings.filter(posting => {
+        if (!posting || !posting.company) return false;
+        
+        // Check if company is in excluded list (case insensitive)
+        const companyLower = posting.company.toLowerCase();
+        if (excludedCompanies.some(company => 
+            companyLower.includes(company.toLowerCase())
+        )) {
+            return false;
+        }
+
+        // Check posting date if available
+        if (posting.postedDate) {
+            const postedDate = new Date(posting.postedDate);
+            if (isNaN(postedDate.getTime()) || postedDate < postedAfter) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    // Apply deduplication if enabled
+    if (deduplication?.enabled !== false) {
+        const fields = Array.isArray(deduplication?.fields) && deduplication.fields.length > 0
+            ? deduplication.fields
+            : ['title', 'company', 'location'];
+            
+        return deduplicateItems(filtered, fields);
+    }
+
+    return filtered;
+}
+
+/**
+ * Gets the appropriate values for a filter type, fetching from API if needed
+ * @param {Object} config - Configuration object from input schema
+ * @param {string} filterType - Type of filter ('jobTitles', 'locations', 'excludedCompanies')
+ * @returns {Promise<Array>} Array of filter values
+ */
+async function getFilterValues(config, filterType) {
+    const { filters } = config;
+    
+    // If values are provided in config, use them
+    if (filters[filterType] && Array.isArray(filters[filterType]) && filters[filterType].length > 0) {
+        return filters[filterType];
+    }
+
+    // Otherwise try to fetch from API
+    try {
+        // Map competitors to excludedCompanies for backward compatibility
+        const apiEntityType = filterType === 'excludedCompanies' ? 'competitors' : filterType;
+        return await fetchFromDatagol(config, apiEntityType);
+    } catch (error) {
+        log(`⚠️ Using default values for ${filterType} due to API error`);
+        // Return empty array to use schema defaults
+        return [];
+    }
+}
+
+// Export the main functions
+export {
+    fetchFromDatagol,
+    deduplicateItems,
+    processJobPostings,
+    getFilterValues
+};
 
 // Helper function to log messages
 const log = (message) => console.log(`[fetchers] ${message}`);
@@ -76,13 +213,13 @@ export const fetchJobTitles = async () => {
 };
 
 /**
- * Fetches the competitor list from the external API
+ * Fetches the excluded companies list from the external API
  * @returns {Promise<string[]>} Array of company names to exclude
  */
-export const fetchCompetitorList = async () => {
+export const fetchExcludedCompanies = async () => {
     return fetchData(
         'ac27bdbc-b564-429e-815d-356d58b00d06',
-        'competitors',
+        'excluded companies',
         DEFAULT_EXCLUDED_COMPANIES,
         (item) => (item.company || item.name || item.companyName)?.trim()
     );
@@ -123,7 +260,7 @@ export const fetchLocations = async () => {
 export const fetchAllData = async () => {
     const [jobTitles, excludedCompanies, locations] = await Promise.all([
         fetchJobTitles(),
-        fetchCompetitorList(),
+        fetchExcludedCompanies(),
         fetchLocations()
     ]);
     
@@ -132,7 +269,7 @@ export const fetchAllData = async () => {
 
 export default {
     fetchJobTitles,
-    fetchCompetitorList,
+    fetchExcludedCompanies,
     fetchLocations,
     fetchAllData,
     // Export defaults for testing

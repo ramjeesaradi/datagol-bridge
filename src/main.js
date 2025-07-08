@@ -2,8 +2,12 @@ import { Actor } from 'apify';
 import got from 'got';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import dotenv from 'dotenv';
 import { buildReportRow } from './reportBase.js';
-import { fetchAllData } from './fetchers.js';
+import { getFilterValues, processJobPostings } from './fetchers.js';
+
+// Load environment variables
+dotenv.config();
 
 // Get the directory name in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -14,46 +18,271 @@ const log = (message) => console.log(`[main] ${message}`);
 
 // Function to create a unique key for a job
 const getJobKey = (job) => {
-    const-jobUrl = job.jobUrl || '';
-    const-description = (job.description || '').replace(/\s+/g, ' ').slice(0, 256);
+    const jobUrl = job.jobUrl || '';
+    const description = (job.description || '').replace(/\s+/g, ' ').slice(0, 256);
     return `${jobUrl}-${description}`;
 };
 
+// Default configuration that can be overridden by input
+function getMergedConfig(input) {
+    const config = {
+        datagolApi: {
+            baseUrl: input.datagolApiBaseUrl || 'https://be-eu.datagol.ai/noCo/api/v2',
+            workspaceId: input.datagolApiWorkspaceId || process.env.DATAGOL_WORKSPACE_ID,
+            readToken: input.datagolReadToken || process.env.DATAGOL_READ_TOKEN,
+            writeToken: input.datagolWriteToken || process.env.DATAGOL_WRITE_TOKEN,
+            tables: {
+                jobTitles: input.jobTitlesTableId || '395a586f-2d3e-4489-a5d9-be0039f97aa1',
+                competitors: input.competitorsTableId || 'ac27bdbc-b564-429e-815d-356d58b00d06',
+                locations: input.locationsTableId || '6122189a-764f-40a9-9721-d756b7dd3626',
+                jobPostings: input.jobPostingsTableId || 'f16a8e15-fa74-4705-8ef5-7345347f6347',
+            },
+        },
+        scraper: {
+            totalJobsToFetch: input.totalJobsToFetch || 50,
+            timeoutSecs: input.scraperTimeoutSecs || 600,
+            maxConcurrent: input.maxConcurrentScrapers || 3,
+        },
+        filters: {
+            jobTitles: input.jobTitles && input.jobTitles.length > 0 ? input.jobTitles : [],
+            locations: input.locations && input.locations.length > 0 ? input.locations : [],
+            excludedCompanies: input.excludedCompanies && input.excludedCompanies.length > 0 ? input.excludedCompanies : [],
+            postedInLastHours: input.postedInLastHours || 24,
+        },
+        deduplication: {
+            enabled: input.enableDeduplication !== undefined ? input.enableDeduplication : true,
+            fields: input.deduplicationFields || ['title', 'company', 'location'],
+        },
+        actorTimeout: input.timeout || 3600,
+    };
+
+    return config;
+}
+
 export default Actor.main(async () => {
+    // Get and merge input with defaults
     const input = await Actor.getInput() ?? {};
-
-    const url = input.datagolUrl ?? process.env.DATAGOL_URL;
-    const token = input.datagolToken ?? process.env.DATAGOL_TOKEN;
-
-    // Fetch dynamic data with fallbacks to static defaults
-    console.log('🔄 Fetching dynamic configuration data...');
-    const { 
-        jobTitles: fetchedTitles, 
-        excludedCompanies: fetchedCompetitors, 
-        locations: fetchedLocations 
-    } = await fetchAllData();
-
-    // Use fetched data if available, otherwise fall back to input values
-    const titles = Array.isArray(fetchedTitles) && fetchedTitles.length ? fetchedTitles : 
-                 (Array.isArray(input.jobTitles) && input.jobTitles.length ? input.jobTitles : []);
-    const locations = Array.isArray(fetchedLocations) && fetchedLocations.length ? fetchedLocations : 
-                    (Array.isArray(input.locations) && input.locations.length ? input.locations : []);
-    const excludedCompanies = Array.isArray(fetchedCompetitors) && fetchedCompetitors.length ? fetchedCompetitors : [];
+    const config = getMergedConfig(input);
     
-    if (!titles.length) {
-        console.warn('⚠️  No job titles found from either API or input. Using empty array.');
+    // Log configuration (without sensitive data)
+    const safeConfig = JSON.parse(JSON.stringify(config));
+    if (safeConfig.datagolApi?.readToken) {
+        safeConfig.datagolApi.readToken = '***';
     }
-    if (!locations.length) {
-        console.warn('⚠️  No locations found from either API or input. Using empty array.');
+    if (safeConfig.datagolApi?.writeToken) {
+        safeConfig.datagolApi.writeToken = '***';
     }
-    if (!excludedCompanies.length) {
-        console.warn('⚠️  No excluded companies found from API. Using empty array.');
+    log(`Using configuration: ${JSON.stringify(safeConfig, null, 2)}`);
+    
+    try {
+        // Fetch filter values in parallel
+        log('🔄 Fetching filter values...');
+        const [jobTitles, locations, excludedCompanies] = await Promise.all([
+            getFilterValues(config, 'jobTitles'),
+            getFilterValues(config, 'locations'),
+            getFilterValues(config, 'excludedCompanies')
+        ]);
+        
+        // Update config with fetched values
+        config.filters.jobTitles = jobTitles;
+        config.filters.locations = locations;
+        config.filters.excludedCompanies = excludedCompanies;
+        
+        // Log fetched values
+        log(`✅ Fetched ${jobTitles.length} job titles, ${locations.length} locations, and ${excludedCompanies.length} excluded companies`);
+        
+        if (!jobTitles.length) {
+            log(`⚠️  No job titles found. Check your configuration or API connection.`);
+        }
+        if (!locations.length) {
+            log(`⚠️  No locations found. Check your configuration or API connection.`);
+        }
+    } catch (error) {
+        log(`❌ Error fetching filter values: ${error.message}`);
+        throw error;
     }
 
-    const totalJobsToFetch = Number.isFinite(input.totalJobsToFetch) ? input.totalJobsToFetch : 1000;
+    // Generate search combinations
+    const searchCombinations = [];
+    for (const title of config.filters.jobTitles) {
+        for (const location of config.filters.locations) {
+            searchCombinations.push({ title, location });
+        }
+    }
 
-    const scraperTimeoutEnv = parseInt(input.scraperTimeoutSecs ?? process.env.SCRAPER_TIMEOUT_SECS ?? '600', 10);
-    const SCRAPER_TIMEOUT = Number.isFinite(scraperTimeoutEnv) ? Math.min(scraperTimeoutEnv, 3600) : 600;
+    if (searchCombinations.length === 0) {
+        throw new Error('No valid search combinations. Please provide at least one job title and one location.');
+    }
+
+    log(`🔍 Found ${searchCombinations.length} search combinations`);
+
+    // Process jobs in batches to respect rate limits
+    const batchSize = Math.min(config.scraper.maxConcurrent || 3, searchCombinations.length);
+    const batches = [];
+    for (let i = 0; i < searchCombinations.length; i += batchSize) {
+        batches.push(searchCombinations.slice(i, i + batchSize));
+    }
+
+    log(`⚡ Processing in ${batches.length} batches of ${batchSize} concurrent searches`);
+
+    const allJobs = [];
+    const seenJobs = new Set();
+    let jobsFetched = 0;
+    const jobsLimit = config.scraper.totalJobsToFetch;
+
+    // Process each batch
+    for (const batch of batches) {
+        if (jobsFetched >= jobsLimit) {
+            log(`Reached job limit of ${jobsLimit}. Stopping further processing.`);
+            break;
+        }
+
+        log(`🚀 Processing batch of ${batch.length} searches...`);
+        
+        const batchPromises = batch.map(async ({ title, location }) => {
+            if (jobsFetched >= jobsLimit) return [];
+            
+            try {
+                const jobs = await runScraper({
+                    title,
+                    location,
+                    postedInLastHours: config.filters.postedInLastHours,
+                    limit: Math.ceil((jobsLimit - jobsFetched) / batch.length)
+                });
+                
+                // Process and deduplicate jobs
+                const processedJobs = processJobPostings(config, jobs);
+                const newJobs = [];
+                
+                for (const job of processedJobs) {
+                    const jobKey = getJobKey(job);
+                    if (!seenJobs.has(jobKey)) {
+                        seenJobs.add(jobKey);
+                        newJobs.push(job);
+                        jobsFetched++;
+                        
+                        if (jobsFetched >= jobsLimit) {
+                            break;
+                        }
+                    }
+                }
+                
+                log(`✅ Found ${newJobs.length} new jobs for "${title}" in "${location}"`);
+                return newJobs;
+            } catch (error) {
+                log.error(`❌ Error processing "${title}" in "${location}": ${error.message}`);
+                return [];
+            }
+        });
+
+        // Wait for all searches in the batch to complete
+        const batchResults = await Promise.all(batchPromises);
+        const batchJobs = batchResults.flat();
+        allJobs.push(...batchJobs);
+        
+        log(`📊 Progress: ${allJobs.length} unique jobs found so far`);
+        
+        // Add a small delay between batches to avoid rate limiting
+        if (batches.length > 1) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+    }
+
+    log(`🎉 Finished! Found ${allJobs.length} unique jobs in total`);
+    
+    // Save results to dataset
+    if (allJobs.length > 0) {
+        await Actor.pushData(allJobs);
+        
+        // Save to Datagol if configured
+        if (config.datagolApi?.tables?.jobPostings) {
+            try {
+                await saveToDatagol(config, allJobs);
+                log('✅ Successfully saved jobs to Datagol');
+            } catch (error) {
+                log.error(`❌ Failed to save jobs to Datagol: ${error.message}`);
+            }
+        }
+    } else {
+        log.warning('No jobs found matching the criteria');
+    }
+} catch (error) {
+    log.error(`❌ Fatal error: ${error.message}`);
+    throw error;
+}
+
+/**
+ * Saves jobs to Datagol API
+ * @param {Object} config - Configuration object
+ * @param {Array} jobs - Array of job objects to save
+ * @returns {Promise<void>}
+ */
+async function saveToDatagol(config, jobs) {
+    const { datagolApi } = config;
+    const tableId = datagolApi.tables.jobPostings;
+    
+    // Use workspace ID from environment variable if available, otherwise from config
+    const workspaceId = process.env.DATAGOL_WORKSPACE_ID || datagolApi.workspaceId;
+    
+    const url = `${datagolApi.baseUrl}/workspaces/${workspaceId}/tables/${tableId}/rows`;
+    
+    // Use write token from environment variable
+    const writeToken = process.env.DATAGOL_WRITE_TOKEN;
+    
+    const headers = {
+        'x-auth-token': writeToken,
+        'Content-Type': 'application/json'
+    };
+    
+    log(`Using x-auth-token for writing job postings to DataGOL`);
+    
+    // Transform jobs to match Datagol's expected format
+    const payload = jobs.map(job => ({
+        // Map job fields to Datagol table columns
+        // Adjust these mappings based on your Datagol table schema
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        description: job.description,
+        url: job.jobUrl,
+        postedDate: job.postedDate ? new Date(job.postedDate).toISOString() : new Date().toISOString(),
+        // Add any additional fields from the job object
+        ...job
+    }));
+    
+    try {
+        log(`📤 Saving ${jobs.length} jobs to Datagol...`);
+        
+        // Send data in chunks to avoid hitting request size limits
+        const CHUNK_SIZE = 100;
+        for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
+            const chunk = payload.slice(i, i + CHUNK_SIZE);
+            
+            const response = await got.post(url, {
+                headers,
+                json: chunk,
+                responseType: 'json',
+                timeout: { request: 30000 },
+                throwHttpErrors: false
+            });
+            
+            if (response.statusCode >= 400) {
+                throw new Error(`API returned status ${response.statusCode}: ${response.body}`);
+            }
+            
+            log(`  ✅ Saved chunk ${Math.floor(i / CHUNK_SIZE) + 1} of ${Math.ceil(payload.length / CHUNK_SIZE)}`);
+            
+            // Add a small delay between chunks to avoid rate limiting
+            if (i + CHUNK_SIZE < payload.length) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+        
+        log(`✅ Successfully saved ${payload.length} jobs to Datagol`);
+    } catch (error) {
+        log.error(`❌ Failed to save jobs to Datagol: ${error.message}`);
+        throw error;
+    }
 
     const MAX_CONCURRENCY = 24;
 
@@ -116,19 +345,21 @@ export default Actor.main(async () => {
             const jobText = `${job.title} ${job.description}`.toLowerCase();
             
             // Check if company is in excludedCompanies
-            const isCompanyExcluded = excludedCompanies.includes(companyName);
+            const isCompanyExcluded = config.filters.excludedCompanies.some(company => 
+                companyName.toLowerCase().includes(company.toLowerCase()));
 
             // Check if any word from excludedCompanies (used as elimination words) exists in job text
-            const isKeywordExcluded = excludedCompanies.some(word => jobText.includes(word.toLowerCase()));
+            const isKeywordExcluded = config.filters.excludedCompanies.some(word => 
+                jobText.includes(word.toLowerCase()));
 
             return !isCompanyExcluded && !isKeywordExcluded;
         });
 
         // Then filter by location if locations are specified
-        const filteredByLocation = locations.length > 0 
+        const filteredByLocation = config.filters.locations.length > 0 
             ? filteredByCompanyAndKeywords.filter(job => {
                 const jobLocation = (job.location || '').toLowerCase();
-                return locations.some(loc => 
+                return config.filters.locations.some(loc => 
                     jobLocation.includes(loc.toLowerCase())
                 );
             })
@@ -150,7 +381,14 @@ export default Actor.main(async () => {
         }
 
         const rowsArr = uniqueItems.map(buildReportRow);
-
+        
+        // Get the DataGOL API configuration from the config
+        const { datagolApi } = config;
+        const { baseUrl, workspaceId, writeToken, tables } = datagolApi;
+        const { jobPostings: jobPostingsTableId } = tables;
+        const url = `${baseUrl}/workspaces/${workspaceId}/tables/${jobPostingsTableId}/data/external`;
+        const token = writeToken;
+        
         console.log(`\n--- About to POST ${rowsArr.length} row(s) to DataGOL at:\n   ${url}\n--- Using token prefix: ${token?.slice(0, 6)}\n`);
 
         for (const [i, row] of rowsArr.entries()) {
