@@ -1,10 +1,9 @@
 import { Actor, log } from 'apify';
-import got from 'got';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
-import { buildReportRow } from './reportBase.js';
-import { getFilterValues, processJobPostings } from './fetchers.js';
+import { getFilterValues } from './fetchers.js';
+import { processJobs, saveResults } from './services.js';
 
 // Load environment variables
 dotenv.config();
@@ -15,12 +14,7 @@ const __dirname = dirname(__filename);
 
 
 
-// Function to create a unique key for a job
-const getJobKey = (job) => {
-    const jobUrl = job.jobUrl || '';
-    const description = (job.description || '').replace(/\s+/g, ' ').slice(0, 256);
-    return `${jobUrl}-${description}`;
-};
+
 
 // Default configuration that can be overridden by input
 function getMergedConfig(input) {
@@ -58,93 +52,7 @@ function getMergedConfig(input) {
     return config;
 }
 
-/**
- * Saves jobs to Datagol API
- * @param {Object} config - Configuration object
- * @param {Array} jobs - Array of job objects to save
- * @returns {Promise<void>}
- */
-async function saveToDatagol(config, jobs) {
-    const { datagolApi } = config;
-    const { baseUrl, workspaceId, writeToken, tables } = datagolApi;
-    const tableId = tables.jobPostings;
 
-    if (!workspaceId || !writeToken) {
-        log.warning('❌ Missing workspaceId or writeToken for saving to Datagol. Skipping.');
-        return;
-    }
-
-    const url = `${baseUrl}/workspaces/${workspaceId}/tables/${tableId}/rows`;
-    
-    const headers = {
-        'x-auth-token': writeToken,
-        'Content-Type': 'application/json'
-    };
-
-    log.info(`Saving ${jobs.length} jobs to Datagol...`);
-
-    for (const job of jobs) {
-        const row = buildReportRow(job);
-        try {
-            const response = await got.post(url, {
-                headers,
-                json: row,
-                responseType: 'json',
-                throwHttpErrors: false
-            });
-
-            if (response.statusCode >= 400) {
-                log.error(`❌ Failed to save job to Datagol. Status: ${response.statusCode}, Body: ${JSON.stringify(response.body)}`);
-            } else {
-                log.info(`✅ Successfully saved job: ${job.title}`);
-            }
-        } catch (error) {
-            log.exception(`❌ Exception while saving job to Datagol:`, error);
-        }
-    }
-}
-
-/**
- * Runs the LinkedIn scraper actor
- * @param {Object} scraperInput - Input for the scraper actor
- * @param {Object} config - The main configuration object
- * @returns {Promise<Array>}
- */
-async function runScraper(scraperInput, config) {
-    const { title, location, limit } = scraperInput;
-    log.info(`🏃‍♂️ Running scraper for: "${title}" in "${location}" (limit: ${limit})`);
-
-    const actorInput = {
-        jobTitles: [title],
-        locations: [location],
-        maxJobs: limit,
-        runInParallel: false, // To avoid nested parallelism issues
-        maxConcurrency: 1,
-        saveOnlyUniqueJobs: true,
-    };
-
-    const remainingTime = await Actor.getRemainingTimeInMillis();
-    const requiredTime = (config.scraper.timeoutSecs || 600) * 1000;
-
-    if (remainingTime < requiredTime) {
-        log.warning(`⚠️ Insufficient time to run scraper (${remainingTime}ms remaining). Skipping.`);
-        return [];
-    }
-
-    try {
-        const { defaultDatasetId } = await Actor.call('bebity/linkedin-jobs-scraper', actorInput, {
-            memory: 256,
-            timeout: config.scraper.timeoutSecs || 600,
-        });
-
-        const { items } = await Actor.openDataset(defaultDatasetId).then(ds => ds.getData());
-        log.info(`Scraper found ${items.length} jobs.`);
-        return items;
-    } catch (error) {
-        log.exception(`❌ Scraper actor failed for "${title}" in "${location}"`, error);
-        return [];
-    }
-}
 
 Actor.main(async () => {
     try {
@@ -174,79 +82,8 @@ Actor.main(async () => {
             return;
         }
 
-        const searchCombinations = [];
-        for (const title of config.filters.jobTitles) {
-            for (const location of config.filters.locations) {
-                searchCombinations.push({ title, location });
-            }
-        }
-
-        log.info(`🔍 Found ${searchCombinations.length} search combinations`);
-
-        const batchSize = Math.min(config.scraper.maxConcurrent || 3, searchCombinations.length);
-        const batches = [];
-        for (let i = 0; i < searchCombinations.length; i += batchSize) {
-            batches.push(searchCombinations.slice(i, i + batchSize));
-        }
-
-        log.info(`⚡ Processing in ${batches.length} batches of ${batchSize} concurrent searches`);
-
-        const allJobs = [];
-        const seenJobs = new Set();
-        let jobsFetched = 0;
-        const jobsLimit = config.scraper.totalJobsToFetch;
-
-        for (const batch of batches) {
-            if (jobsFetched >= jobsLimit) {
-                log.info(`Reached job limit of ${jobsLimit}. Stopping further processing.`);
-                break;
-            }
-
-            log.info(`🚀 Processing batch of ${batch.length} searches...`);
-            
-            const batchPromises = batch.map(async ({ title, location }) => {
-                if (jobsFetched >= jobsLimit) return [];
-                
-                const jobs = await runScraper({ title, location, limit: Math.ceil((jobsLimit - jobsFetched) / batch.length) }, config);
-                const processedJobs = processJobPostings(config, jobs);
-                const newJobs = [];
-                
-                for (const job of processedJobs) {
-                    const jobKey = getJobKey(job);
-                    if (!seenJobs.has(jobKey)) {
-                        seenJobs.add(jobKey);
-                        newJobs.push(job);
-                        jobsFetched++;
-                        if (jobsFetched >= jobsLimit) break;
-                    }
-                }
-                
-                log.info(`✅ Found ${newJobs.length} new jobs for "${title}" in "${location}"`);
-                return newJobs;
-            });
-
-            const batchResults = await Promise.all(batchPromises);
-            const batchJobs = batchResults.flat();
-            allJobs.push(...batchJobs);
-            
-            log.info(`📊 Progress: ${allJobs.length} unique jobs found so far`);
-            
-            if (batches.length > 1) {
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-        }
-
-        log.info(`🎉 Finished! Found ${allJobs.length} unique jobs in total`);
-        
-        if (allJobs.length > 0) {
-            await Actor.pushData(allJobs);
-            
-            if (config.datagolApi?.tables?.jobPostings) {
-                await saveToDatagol(config, allJobs);
-            }
-        } else {
-            log.warning('No jobs found matching the criteria');
-        }
+        const jobs = await processJobs(config);
+        await saveResults(config, jobs);
 
     } catch (error) {
         log.exception('❌ Fatal error in main execution block', error);

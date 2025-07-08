@@ -1,9 +1,17 @@
-
-result.json
-node_modules
-node_modules
-node_modules
+# Dependencies
 node_modules
 
-# Environment variables
+# Apify local storage
+apify_storage
+
+# Local environment variables
 .env
+
+# Test results and logs
+result.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store

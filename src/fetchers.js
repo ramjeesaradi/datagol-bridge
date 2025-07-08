@@ -1,5 +1,7 @@
+import { log } from 'apify';
 import got from 'got';
 import dotenv from 'dotenv';
+import { buildReportRow } from './reportBase.js';
 
 // Load environment variables
 dotenv.config();
@@ -15,38 +17,31 @@ async function fetchFromDatagol(config, entityType) {
     const { baseUrl, workspaceId, readToken, tables } = datagolApi;
     const tableId = tables[entityType];
 
+    if (!tableId) {
+        log.warning(`No tableId configured for ${entityType}.`);
+        return [];
+    }
+
     if (!workspaceId || !readToken) {
-        log(`❌ Missing workspaceId or readToken for fetching ${entityType}. Check your environment variables or input configuration.`);
-        throw new Error('Missing Datagol API credentials.');
+        log.warning(`❌ Missing workspaceId or readToken for fetching ${entityType}. Check environment variables.`);
+        return [];
     }
 
     const url = `${baseUrl}/workspaces/${workspaceId}/tables/${tableId}/data/external`;
-
-    const headers = {
-        'Authorization': `Bearer ${readToken}`,
-        'Content-Type': 'application/json'
-    };
-    
-    log(`Using Authorization: Bearer token for reading ${entityType}`);
+    const headers = { 'Authorization': `Bearer ${readToken}`, 'Content-Type': 'application/json' };
 
     try {
-        log(`Fetching ${entityType} from Datagol API...`);
+        log.info(`Fetching ${entityType} from Datagol API...`);
         const response = await got.post(url, {
             headers,
             json: { requestPageDetails: { pageNumber: 1, pageSize: 500 } },
             responseType: 'json',
             timeout: { request: 10000 },
-            throwHttpErrors: false
         });
-
-        if (response.statusCode !== 200) {
-            throw new Error(`API returned status ${response.statusCode}`);
-        }
 
         const responseData = response.body;
         let items = [];
 
-        // Handle different response formats
         if (Array.isArray(responseData)) {
             items = responseData;
         } else if (responseData?.data && Array.isArray(responseData.data)) {
@@ -55,17 +50,11 @@ async function fetchFromDatagol(config, entityType) {
             items = responseData.items;
         }
 
-        log(`✅ Fetched ${items.length} ${entityType} from Datagol API`);
-        return items.map(item => {
-            // Extract the name field if it exists, otherwise use the entire item
-            if (item && typeof item === 'object' && 'name' in item) {
-                return item.name;
-            }
-            return item;
-        });
+        log.info(`✅ Fetched ${items.length} ${entityType} from Datagol API`);
+        return items;
     } catch (error) {
-        log(`❌ Failed to fetch ${entityType} from Datagol API: ${error.message}`);
-        throw error; // Let the caller handle the fallback
+        log.error(`❌ Failed to fetch ${entityType} from Datagol API: ${error.message}`);
+        return []; // Return empty array on error to allow fallback
     }
 }
 
@@ -177,31 +166,30 @@ export {
     getFilterValues
 };
 
-// Helper function to log messages
-const log = (message) => console.log(`[fetchers] ${message}`);
+
 
 const fetchData = async (config, tableId, entityName, defaultData, dataMapper) => {
     let data;
     try {
         data = await fetchFromDatagol(config, entityName);
     } catch (error) {
-        log(`API call for ${entityName} failed, using defaults. Error: ${error.message}`);
+        log.warning(`API call for ${entityName} failed, using defaults. Error: ${error.message}`);
         return defaultData;
     }
 
     if (!data) {
-        log(`No ${entityName} found in API response, using defaults`);
+        log.warning(`No ${entityName} found in API response, using defaults`);
         return defaultData;
     }
 
     const mappedData = data.map(dataMapper).filter(Boolean);
 
     if (mappedData.length === 0) {
-        log(`No ${entityName} found in API response, using defaults`);
+        log.warning(`No ${entityName} found in API response, using defaults`);
         return defaultData;
     }
 
-    log(`✅ Fetched ${mappedData.length} ${entityName} from external API`);
+    log.info(`✅ Fetched ${mappedData.length} ${entityName} from external API`);
     return mappedData;
 };
 
@@ -210,13 +198,8 @@ const fetchData = async (config, tableId, entityName, defaultData, dataMapper) =
  * @returns {Promise<string[]>} Array of job titles
  */
 export const fetchJobTitles = async (config) => {
-    return fetchData(
-        config,
-        '395a586f-2d3e-4489-a5d9-be0039f97aa1',
-        'job titles',
-        [],
-        (item) => item.title || item.name || item.jobTitle
-    );
+    const items = await fetchFromDatagol(config, 'jobTitles');
+    return items.map(item => item.title || item.name || item.jobTitle).filter(Boolean);
 };
 
 /**
@@ -224,13 +207,8 @@ export const fetchJobTitles = async (config) => {
  * @returns {Promise<string[]>} Array of company names to exclude
  */
 export const fetchExcludedCompanies = async (config) => {
-    return fetchData(
-        config,
-        'ac27bdbc-b564-429e-815d-356d58b00d06',
-        'excluded companies',
-        [],
-        (item) => (item.company || item.name || item.companyName)?.trim()
-    );
+    const items = await fetchFromDatagol(config, 'excludedCompanies');
+    return items.map(item => (item.company || item.name || item.companyName)?.trim()).filter(Boolean);
 };
 
 /**
@@ -238,31 +216,9 @@ export const fetchExcludedCompanies = async (config) => {
  * @returns {Promise<string[]>} Array of location names
  */
 export const fetchLocations = async (config) => {
-    const data = await fetchFromDatagol(config, 'locations');
-
-    if (!data) {
-        log('No locations found in API response, using defaults');
-        return [];
-    }
-
-    const locations = [];
-    const seen = new Set();
-
-    data.forEach(item => {
-        const location = item.location || item.city || item.name || item.title;
-        if (location && typeof location === 'string' && !seen.has(location.trim())) {
-            seen.add(location.trim());
-            locations.push(location.trim());
-        }
-    });
-
-    if (locations.length === 0) {
-        log('No locations found in API response, using defaults');
-        return [];
-    }
-
-    log(`✅ Fetched ${locations.length} locations from external API`);
-    return locations;
+    const items = await fetchFromDatagol(config, 'locations');
+    const locations = items.map(item => item.location || item.city || item.name || item.title).filter(Boolean);
+    return [...new Set(locations)]; // Return unique locations
 };
 
 export const fetchAllData = async (config) => {
@@ -275,9 +231,56 @@ export const fetchAllData = async (config) => {
     return { jobTitles, excludedCompanies, locations };
 };
 
+/**
+ * Saves jobs to Datagol API
+ * @param {Object} config - Configuration object
+ * @param {Array} jobs - Array of job objects to save
+ * @returns {Promise<void>}
+ */
+export async function saveToDatagol(config, jobs) {
+    const { datagolApi } = config;
+    const { baseUrl, workspaceId, writeToken, tables } = datagolApi;
+    const tableId = tables.jobPostings;
+
+    if (!workspaceId || !writeToken) {
+        log.warning('❌ Missing workspaceId or writeToken for saving to Datagol. Skipping.');
+        return;
+    }
+
+    const url = `${baseUrl}/workspaces/${workspaceId}/tables/${tableId}/rows`;
+    
+    const headers = {
+        'x-auth-token': writeToken,
+        'Content-Type': 'application/json'
+    };
+
+    log.info(`Saving ${jobs.length} jobs to Datagol...`);
+
+    for (const job of jobs) {
+        const row = buildReportRow(job);
+        try {
+            const response = await got.post(url, {
+                headers,
+                json: row,
+                responseType: 'json',
+                throwHttpErrors: false
+            });
+
+            if (response.statusCode >= 400) {
+                log.error(`❌ Failed to save job to Datagol. Status: ${response.statusCode}, Body: ${JSON.stringify(response.body)}`);
+            } else {
+                log.info(`✅ Successfully saved job: ${job.title}`);
+            }
+        } catch (error) {
+            log.exception(`❌ Exception while saving job to Datagol:`, error);
+        }
+    }
+}
+
 export default {
     fetchJobTitles,
     fetchExcludedCompanies,
     fetchLocations,
-    fetchAllData
+    fetchAllData,
+    saveToDatagol
 };
