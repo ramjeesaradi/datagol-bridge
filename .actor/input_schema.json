@@ -24,10 +24,12 @@
         },
         "workspaceId": {
           "type": "string",
-          "description": "Workspace ID in Datagol (set via environment variable DATAGOL_WORKSPACE_ID)"
+          "description": "Workspace ID in Datagol (set via environment variable DATAGOL_WORKSPACE_ID)",
+          "editor": "textfield"
         },
         "tables": {
           "type": "object",
+          "title": "Table IDs",
           "properties": {
             "jobTitles": {
               "type": "string",
@@ -46,7 +48,7 @@
             },
             "jobPostings": {
               "type": "string",
-              "default": "f16a8e15-fa74-4705-8ef5-7345347f63478",
+              "default": "f16a8e15-fa74-4705-8ef5-7345347f6347",
               "description": "Table ID for job postings"
             }
           }
@@ -71,20 +73,24 @@
           "type": "integer",
           "default": 50,
           "minimum": 1,
-          "description": "Total number of job listings to fetch across all search combinations."
+          "description": "Total number of job listings to fetch across all search combinations.",
+          "prefill": 50
         },
         "timeoutSecs": {
           "type": "integer",
           "default": 600,
+          "minimum": 60,
           "maximum": 3600,
-          "description": "Maximum time in seconds to wait for each LinkedIn scraper run."
+          "description": "Maximum time in seconds to wait for each LinkedIn scraper run.",
+          "prefill": 600
         },
         "maxConcurrent": {
           "type": "integer",
           "default": 3,
           "minimum": 1,
           "maximum": 10,
-          "description": "Maximum number of concurrent scraper instances"
+          "description": "Maximum number of concurrent scraper instances",
+          "prefill": 3
         }
       }
     },
@@ -98,73 +104,35 @@
           "default": [
             "Financial controller",
             "Business controller",
+            "FP&A manager",
             "Financial analyst",
-            "FP&A",
-            "Finance Business Partner",
-            "Contrôleur de gestion",
-            "Analyste Financier",
-            "Financieel analist",
-            "Financieel controller",
-            "Accountant",
-            "comptable",
-            "boekhouder",
-            "gestionnaire de dossiers",
-            "dossierbeheerder"
+            "Finance manager"
           ],
-          "description": "List of job titles to search for. Will be fetched from API if not provided.",
+          "description": "List of job titles to search for",
           "editor": "stringList"
         },
         "locations": {
           "title": "Locations",
           "type": "array",
           "default": [
-            "Brussels",
-            "Namur",
-            "Charleroi",
-            "Liège",
-            "Mons",
-            "Arlon"
+            "Switzerland",
+            "Germany",
+            "France",
+            "United Kingdom",
+            "Netherlands"
           ],
-          "description": "List of locations to search in. Will be fetched from API if not provided.",
+          "description": "List of locations to search in",
           "editor": "stringList"
         },
         "excludedCompanies": {
           "title": "Excluded Companies",
           "type": "array",
           "default": [
-            "Walt & Spencer",
-            "Flipper",
-            "Ufinity",
-            "JH Partners",
-            "Recruitment Sisters",
-            "Sander",
-            "Robert Walters",
-            "Robert Half",
-            "Michael Page",
-            "Connescence",
-            "Asteria HR Group",
-            "Gentis",
-            "Kingsley & Partners",
-            "Dixon",
-            "Generations Recruitment",
-            "Alpen",
-            "Abiomis",
-            "Arbalett",
-            "Wolfson",
-            "Levy Global",
-            "Le Grand & Associates",
-            "Argateam",
-            "Argafin",
-            "Austin Bright",
-            "Habeas",
-            "Pensaert & Partners",
-            "Financial Talents",
-            "Konvert",
-            "Linking Talents",
-            "USG",
-            "Cossel",
-            "Pegasus",
-            "Flowtech",
+            "PwC",
+            "Deloitte",
+            "EY",
+            "KPMG",
+            "Accenture",
             "Hiring",
             "CTRL F",
             "Connect",
