@@ -53,21 +53,6 @@ function getMergedConfig(input) {
 
     return config;
 }
-        filters: {
-            jobTitles: input.jobTitles && input.jobTitles.length > 0 ? input.jobTitles : [],
-            locations: input.locations && input.locations.length > 0 ? input.locations : [],
-            excludedCompanies: input.excludedCompanies && input.excludedCompanies.length > 0 ? input.excludedCompanies : [],
-            postedInLastHours: input.postedInLastHours || 24,
-        },
-        deduplication: {
-            enabled: input.enableDeduplication !== undefined ? input.enableDeduplication : true,
-            fields: input.deduplicationFields || ['title', 'company', 'location'],
-        },
-        actorTimeout: input.timeout || 3600,
-    };
-
-    return config;
-}
 
 
 
