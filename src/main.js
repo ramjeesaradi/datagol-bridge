@@ -1,4 +1,4 @@
-import { Actor } from 'apify';
+import { Actor, log } from 'apify';
 import got from 'got';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -13,8 +13,7 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Helper function to log messages
-const log = Actor.log;
+
 
 // Function to create a unique key for a job
 const getJobKey = (job) => {

@@ -10,7 +10,11 @@
     "got": "^12.6.0"
   },
   "scripts": {
-    "start": "node src/main.js"
+    "start": "node src/main.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   },
   "author": "",
   "license": "ISC"

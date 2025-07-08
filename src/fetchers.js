@@ -180,8 +180,14 @@ export {
 // Helper function to log messages
 const log = (message) => console.log(`[fetchers] ${message}`);
 
-const fetchData = async (tableId, entityName, defaultData, dataMapper) => {
-    const data = await fetchFromDatagol(tableId, entityName);
+const fetchData = async (config, tableId, entityName, defaultData, dataMapper) => {
+    let data;
+    try {
+        data = await fetchFromDatagol(config, entityName);
+    } catch (error) {
+        log(`API call for ${entityName} failed, using defaults. Error: ${error.message}`);
+        return defaultData;
+    }
 
     if (!data) {
         log(`No ${entityName} found in API response, using defaults`);
@@ -203,8 +209,9 @@ const fetchData = async (tableId, entityName, defaultData, dataMapper) => {
  * Fetches job titles from the external API
  * @returns {Promise<string[]>} Array of job titles
  */
-export const fetchJobTitles = async () => {
+export const fetchJobTitles = async (config) => {
     return fetchData(
+        config,
         '395a586f-2d3e-4489-a5d9-be0039f97aa1',
         'job titles',
         [],
@@ -216,8 +223,9 @@ export const fetchJobTitles = async () => {
  * Fetches the excluded companies list from the external API
  * @returns {Promise<string[]>} Array of company names to exclude
  */
-export const fetchExcludedCompanies = async () => {
+export const fetchExcludedCompanies = async (config) => {
     return fetchData(
+        config,
         'ac27bdbc-b564-429e-815d-356d58b00d06',
         'excluded companies',
         [],
@@ -229,8 +237,8 @@ export const fetchExcludedCompanies = async () => {
  * Fetches locations from the external API
  * @returns {Promise<string[]>} Array of location names
  */
-export const fetchLocations = async () => {
-    const data = await fetchFromDatagol('6122189a-764f-40a9-9721-d756b7dd3626', 'locations');
+export const fetchLocations = async (config) => {
+    const data = await fetchFromDatagol(config, 'locations');
 
     if (!data) {
         log('No locations found in API response, using defaults');
@@ -257,11 +265,11 @@ export const fetchLocations = async () => {
     return locations;
 };
 
-export const fetchAllData = async () => {
+export const fetchAllData = async (config) => {
     const [jobTitles, excludedCompanies, locations] = await Promise.all([
-        fetchJobTitles(),
-        fetchExcludedCompanies(),
-        fetchLocations()
+        fetchJobTitles(config),
+        fetchExcludedCompanies(config),
+        fetchLocations(config)
     ]);
     
     return { jobTitles, excludedCompanies, locations };
