@@ -207,7 +207,7 @@ export const fetchJobTitles = async () => {
     return fetchData(
         '395a586f-2d3e-4489-a5d9-be0039f97aa1',
         'job titles',
-        DEFAULT_JOB_TITLES,
+        [],
         (item) => item.title || item.name || item.jobTitle
     );
 };
@@ -220,7 +220,7 @@ export const fetchExcludedCompanies = async () => {
     return fetchData(
         'ac27bdbc-b564-429e-815d-356d58b00d06',
         'excluded companies',
-        DEFAULT_EXCLUDED_COMPANIES,
+        [],
         (item) => (item.company || item.name || item.companyName)?.trim()
     );
 };
@@ -234,7 +234,7 @@ export const fetchLocations = async () => {
 
     if (!data) {
         log('No locations found in API response, using defaults');
-        return DEFAULT_LOCATIONS;
+        return [];
     }
 
     const locations = [];
@@ -250,7 +250,7 @@ export const fetchLocations = async () => {
 
     if (locations.length === 0) {
         log('No locations found in API response, using defaults');
-        return DEFAULT_LOCATIONS;
+        return [];
     }
 
     log(`✅ Fetched ${locations.length} locations from external API`);
@@ -271,9 +271,5 @@ export default {
     fetchJobTitles,
     fetchExcludedCompanies,
     fetchLocations,
-    fetchAllData,
-    // Export defaults for testing
-    DEFAULT_JOB_TITLES,
-    DEFAULT_EXCLUDED_COMPANIES,
-    DEFAULT_LOCATIONS
+    fetchAllData
 };
