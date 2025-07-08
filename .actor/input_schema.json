@@ -18,14 +18,16 @@
             "type": "string",
             "description": "Base URL for the Datagol API.",
             "default": "https://be-eu.datagol.ai/noCo/api/v2",
-            "prefill": "https://be-eu.datagol.ai/noCo/api/v2"
+            "prefill": "https://be-eu.datagol.ai/noCo/api/v2",
+            "editor": "textfield"
         },
         "datagolApiWorkspaceId": {
             "title": "Datagol Workspace ID",
             "type": "string",
             "description": "Workspace ID in Datagol (or set DATAGOL_WORKSPACE_ID env var).",
             "default": "",
-            "prefill": ""
+            "prefill": "",
+            "editor": "textfield"
         },
         "datagolReadToken": {
             "title": "Datagol Read Token",
@@ -46,28 +48,32 @@
             "type": "string",
             "description": "Datagol table ID for job titles.",
             "default": "395a586f-2d3e-4489-a5d9-be0039f97aa1",
-            "prefill": "395a586f-2d3e-4489-a5d9-be0039f97aa1"
+            "prefill": "395a586f-2d3e-4489-a5d9-be0039f97aa1",
+            "editor": "textfield"
         },
         "competitorsTableId": {
             "title": "Competitors Table ID",
             "type": "string",
             "description": "Datagol table ID for the competitor list.",
             "default": "ac27bdbc-b564-429e-815d-356d58b00d06",
-            "prefill": "ac27bdbc-b564-429e-815d-356d58b00d06"
+            "prefill": "ac27bdbc-b564-429e-815d-356d58b00d06",
+            "editor": "textfield"
         },
         "locationsTableId": {
             "title": "Locations Table ID",
             "type": "string",
             "description": "Datagol table ID for locations.",
             "default": "6122189a-764f-40a9-9721-d756b7dd3626",
-            "prefill": "6122189a-764f-40a9-9721-d756b7dd3626"
+            "prefill": "6122189a-764f-40a9-9721-d756b7dd3626",
+            "editor": "textfield"
         },
         "jobPostingsTableId": {
             "title": "Job Postings Table ID",
             "type": "string",
             "description": "Datagol table ID for saving job postings.",
             "default": "f16a8e15-fa74-4705-8ef5-7345347f6347",
-            "prefill": "f16a8e15-fa74-4705-8ef5-7345347f6347"
+            "prefill": "f16a8e15-fa74-4705-8ef5-7345347f6347",
+            "editor": "textfield"
         },
         "totalJobsToFetch": {
             "title": "Total Jobs to Fetch",
