@@ -1,12 +1,9 @@
 import { Actor, log } from 'apify';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import dotenv from 'dotenv';
 import { getFilterValues } from './fetchers.js';
 import { processJobs, saveResults } from './services.js';
 
-// Load environment variables
-dotenv.config();
 
 // Get the directory name in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -20,15 +17,15 @@ const __dirname = dirname(__filename);
 function getMergedConfig(input) {
     const config = {
         datagolApi: {
-            baseUrl: process.env.DATAGOL_API_BASE_URL || 'https://be-eu.datagol.ai/noCo/api/v2',
-            workspaceId: process.env.DATAGOL_WORKSPACE_ID,
-            readToken: process.env.DATAGOL_READ_TOKEN,
-            writeToken: process.env.DATAGOL_WRITE_TOKEN,
+            baseUrl: input.datagolApiBaseUrl ,
+            workspaceId: input.datagolApiWorkspaceId,
+            readToken: input.DATAGOL_READ_TOKEN,
+            writeToken: input.DATAGOL_WRITE_TOKEN,
             tables: {
-                jobTitles: process.env.DATAGOL_JOB_TITLES_TABLE_ID || '395a586f-2d3e-4489-a5d9-be0039f97aa1',
-                excludedCompanies: process.env.DATAGOL_EXCLUDED_COMPANIES_TABLE_ID || 'ac27bdbc-b564-429e-815d-356d58b00d06',
-                locations: process.env.DATAGOL_LOCATIONS_TABLE_ID || '6122189a-764f-40a9-9721-d756b7dd3626',
-                jobPostings: process.env.DATAGOL_JOB_POSTINGS_TABLE_ID || 'f16a8e15-fa74-4705-8ef5-7345347f6347',
+                jobTitles: input.jobTitlesTableId,
+                excludedCompanies: input.excludedCompaniesTableId,
+                locations: input.locationsTableId,
+                jobPostings: input.jobPostingsTableId,
             },
         },
         scraper: {

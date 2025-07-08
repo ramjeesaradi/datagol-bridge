@@ -1,39 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ACTOR_NAME="datagol-bridge"
+
+log() { printf '[%s] %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*"; }
+die() { log "FATAL: $*"; exit 1; }
+
+# Check if Apify CLI is installed
+if ! command -v apify &> /dev/null; then
+    die "Apify CLI not found. Please install it first: https://docs.apify.com/cli/docs/installation"
+fi
+
+# Source credentials if available
 CRED_FILE=".apify_credentials"
-[ -f "$CRED_FILE" ] && eval "$(grep -E 'APIFY_(USERNAME|API_TOKEN)' "$CRED_FILE")"
+if [ -f "$CRED_FILE" ]; then
+    log "Loading credentials from $CRED_FILE"
+    # Source the file to load the variables
+    . "$CRED_FILE"
+fi
 
-: "${APIFY_USERNAME:?Need Apify username}"
-: "${APIFY_API_TOKEN:?Need Apify API token}"
+# The Apify CLI automatically uses the APIFY_TOKEN environment variable for authentication.
+# We export it here to ensure it's available to the apify command.
+if [ -n "${APIFY_API_TOKEN:-}" ]; then
+    export APIFY_TOKEN="$APIFY_API_TOKEN"
+fi
 
-log(){ printf '[%s] %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*"; }
+log "Deploying actor to Apify platform..."
 
-login(){
-  log "Logging in to Apify..."
-  echo "$APIFY_API_TOKEN" | docker login registry.apify.com -u "$APIFY_USERNAME" --password-stdin \
-    || die "Docker login failed"
-}
+# Push the actor. This will upload the source code and trigger a build on the Apify platform.
+apify push || die "Failed to push actor to Apify."
 
-build(){
-  log "Building $ACTOR_NAME..."
-  docker build -t "$ACTOR_NAME:$IMAGE_TAG" .
-}
-
-tag_and_push(){
-  local IMAGE="registry.apify.com/$APIFY_USERNAME/$ACTOR_NAME:$IMAGE_TAG"
-  log "Tagging $IMAGE"
-  docker tag "$ACTOR_NAME:$IMAGE_TAG" "$IMAGE"
-  log "Pushing $IMAGE"
-  docker push "$IMAGE"
-}
-
-main(){
-  IMAGE_TAG="${GITHUB_SHA:-$(date +'%Y%m%d%H%M%S')}"
-  login
-  build
-  tag_and_push
-  log "Deployment complete: $IMAGE"
-}
-
-main "$@"
+log "Actor deployed successfully!"

@@ -1,10 +1,7 @@
 import { log } from 'apify';
 import got from 'got';
-import dotenv from 'dotenv';
 import { buildReportRow } from './reportBase.js';
 
-// Load environment variables
-dotenv.config();
 
 /**
  * Fetches data from a Datagol table.
@@ -40,19 +37,11 @@ async function fetchFromDatagol(datagolApi, entityType) {
             timeout: { request: 10000 },
         };
 
-        if (entityType === 'locations') {
-            // Locations are fetched from a different endpoint with a GET request
-            url = `${baseUrl}/workbooks/${tableId}/data`;
-            method = 'GET';
-            response = await got.get(url, requestOptions);
-        } else {
-            // Other entities are fetched with a POST request
-            url = `${baseUrl}/workspaces/${workspaceId}/tables/${tableId}/data/external`;
-            method = 'POST';
-            requestOptions.json = { requestPageDetails: { pageNumber: 1, pageSize: 500 } };
-            requestOptions.headers['Content-Type'] = 'application/json';
-            response = await got.post(url, requestOptions);
-        }
+        // All entity types now use the same endpoint structure and POST method
+        url = `${baseUrl}/workspaces/${workspaceId}/tables/${tableId}/data/external`;
+        requestOptions.json = { requestPageDetails: { pageNumber: 1, pageSize: 500 } };
+        requestOptions.headers['Content-Type'] = 'application/json';
+        response = await got.post(url, requestOptions);
 
         const responseData = response.body;
         let items = [];
