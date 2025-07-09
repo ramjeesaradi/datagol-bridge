@@ -14,6 +14,7 @@ RUN npm install --omit=dev --omit=optional && rm -rf ~/.npm
 # source code don't invalidate the dependency cache.
 COPY . ./
 
+
 # Create and run as a non-root user.
 RUN adduser -h /home/apify -D apify && \
     chown -R apify:apify ./

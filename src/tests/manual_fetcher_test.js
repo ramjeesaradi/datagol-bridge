@@ -1,54 +1,48 @@
-import fs from 'fs/promises';
-import path from 'path';
+import 'dotenv/config';
 import { log } from 'apify';
-import { fileURLToPath } from 'url';
-import fetchers from '../fetchers.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getFilterValues } from '../fetchers.js';
 
 async function runTest() {
     log.info('Starting fetcher test...');
 
     try {
-        // Load input schema to get default values
-        const schemaPath = path.join(__dirname, '..', '..', '.actor', 'input_schema.json');
-        const schemaContent = await fs.readFile(schemaPath, 'utf-8');
-        const schema = JSON.parse(schemaContent);
-
-        // Build config from schema defaults
+        // Build config from environment variables
         const config = {
             datagolApi: {
-                baseUrl: schema.properties.datagolApiBaseUrl.default,
-                workspaceId: schema.properties.datagolApiWorkspaceId.default,
-                readToken: schema.properties.DATAGOL_READ_TOKEN.default,
+                baseUrl: 'https://be-eu.datagol.ai/noCo/api/v2',
+                workspaceId: process.env.DATAGOL_WORKSPACE_ID,
+                writeToken: process.env.DATAGOL_WRITE_TOKEN,
                 tables: {
-                    jobTitles: schema.properties.jobTitlesTableId.default,
-                    excludedCompanies: schema.properties.excludedCompaniesTableId.default,
-                    locations: schema.properties.locationsTableId.default,
+                    jobTitles: '395a586f-2d3e-4489-a5d9-be0039f97aa1',
+                    excludedCompanies: 'ac27bdbc-b564-429e-815d-356d58b00d06',
+                    locations: '6122189a-764f-40a9-9721-d756b7dd3626',
                 },
             },
         };
 
-        log.info('Testing with config:', config);
+        if (!config.datagolApi.workspaceId || !config.datagolApi.writeToken) {
+            throw new Error('Missing DATAGOL_WORKSPACE_ID or DATAGOL_WRITE_TOKEN in .env file');
+        }
+
+        log.info('Testing with loaded config...');
 
         // Test fetching functions
         log.info('--- Testing fetchJobTitles ---');
-        const jobTitles = await fetchers.fetchJobTitles(config);
+        const jobTitles = await getFilterValues(config, 'jobTitles');
         log.info(`Fetched ${jobTitles.length} job titles.`);
 
         log.info('--- Testing fetchExcludedCompanies ---');
-        const excludedCompanies = await fetchers.fetchExcludedCompanies(config);
+        const excludedCompanies = await getFilterValues(config, 'excludedCompanies');
         log.info(`Fetched ${excludedCompanies.length} excluded companies.`);
 
         log.info('--- Testing fetchLocations ---');
-        const locations = await fetchers.fetchLocations(config);
+        const locations = await getFilterValues(config, 'locations');
         log.info(`Fetched ${locations.length} locations.`);
 
-        log.info('Test finished.');
+        log.info('Test finished successfully.');
 
     } catch (error) {
-        log.error('Test failed:', error);
+        log.error('Test failed:', { message: error.message, stack: error.stack });
     }
 }
 

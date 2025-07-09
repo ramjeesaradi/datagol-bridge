@@ -13,34 +13,45 @@ if ! command -v apify &> /dev/null; then
     die "Apify CLI not found. Please install it first: https://docs.apify.com/cli/docs/installation"
 fi
 
-# Source credentials if available
-CRED_FILE=".apify_credentials"
-if [ -f "$CRED_FILE" ]; then
-    log "Loading credentials from $CRED_FILE"
-    # Use 'export' to make the variable available to subprocesses
-    export "$(grep -E 'APIFY_API_TOKEN' "$CRED_FILE")"
+# Check if .env file exists
+if [ ! -f .env ]; then
+    die ".env file not found. Please create it and add your APIFY_TOKEN."
 fi
 
-# Check if the user is logged in to Apify, or log in with a token
-if ! apify whoami &> /dev/null; then
-    if [ -n "${APIFY_API_TOKEN:-}" ]; then
-        log "Not logged in. Logging in with API token..."
-        apify login --token "$APIFY_API_TOKEN" || die "Apify login failed."
-    else
-        log "You are not logged in to Apify and no API token is available."
-        log "Please run 'apify login' interactively first."
-        die "Cannot proceed without login."
-    fi
+# Source the APIFY_TOKEN from the .env file
+log "Sourcing APIFY_TOKEN from .env file..."
+APIFY_TOKEN=$(grep APIFY_TOKEN .env | cut -d '=' -f2)
+
+if [ -z "$APIFY_TOKEN" ]; then
+    die "APIFY_TOKEN not found in .env file."
 fi
 
 log "Deploying actor to Apify platform..."
 
 # Push the actor. This will upload the source code and build the Docker image on Apify cloud.
-apify push || die "Failed to push actor to Apify."
-
-log "Actor deployed successfully!"
+apify push --no-prompt --force || die "Failed to push actor to Apify."
 
 log "Running the actor on the Apify platform..."
-apify call "$ACTOR_NAME" || die "Failed to run actor."
+# Run the actor and capture the run ID
+log "Running the actor on the Apify platform..."
+RUN_OUTPUT=$(apify call --json || die "Failed to call actor on Apify.")
+RUN_ID=$(echo "$RUN_OUTPUT" | jq -r '.id')
 
-log "Actor run finished successfully!"
+if [ -z "$RUN_ID" ]; then
+    die "Failed to get run ID from apify call output."
+fi
+
+log "Actor run started with ID: $RUN_ID"
+
+# Create logs directory if it doesn't exist
+mkdir -p logs
+
+# Fetch and save logs
+log "Fetching logs for run $RUN_ID..."
+apify get log "$RUN_ID" > "logs/apify_run_${RUN_ID}.log" || log "Warning: Failed to fetch logs for run $RUN_ID."
+
+log "Logs saved to logs/apify_run_${RUN_ID}.log"
+
+log "Actor deployed and run successfully!"
+
+log "Actor deployed successfully!"

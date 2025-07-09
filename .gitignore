@@ -16,4 +16,7 @@ yarn-error.log*
 # OS generated files
 .DS_Store
 
+# Local logs
+logs/
+
 .apify_credentials

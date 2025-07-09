@@ -1,95 +1,93 @@
 import { Actor, log } from 'apify';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import { getFilterValues } from './fetchers.js';
-import { processJobs, saveResults } from './services.js';
-
-
-// Get the directory name in ES module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-
-
-
-
-// Default configuration that can be overridden by input
-function getMergedConfig(input) {
-    const config = {
-        datagolApi: {
-            baseUrl: input.datagolApiBaseUrl ,
-            workspaceId: input.datagolApiWorkspaceId,
-            readToken: input.DATAGOL_READ_TOKEN,
-            writeToken: input.DATAGOL_WRITE_TOKEN,
-            tables: {
-                jobTitles: input.jobTitlesTableId,
-                excludedCompanies: input.excludedCompaniesTableId,
-                locations: input.locationsTableId,
-                jobPostings: input.jobPostingsTableId,
-            },
-        },
-        scraper: {
-            totalJobsToFetch: input.totalJobsToFetch || 50,
-            timeoutSecs: input.scraperTimeoutSecs || 600,
-            maxConcurrent: input.maxConcurrentScrapers || 24,
-            apifyToken: input.apifyToken || process.env.APIFY_TOKEN,
-            memory: input.scraperMemory || 256,
-            },
-        };
-
-    // Log the DataGOL API configuration being used
-    log.info('DataGOL API Configuration:');
-    log.info(`  Base URL: ${config.datagolApi.baseUrl}`);
-    log.info(`  Workspace ID: ${config.datagolApi.workspaceId}`);
-    log.info(`  Read Token: ${config.datagolApi.readToken ? '***' : 'Not set'}`);
-    log.info(`  Write Token: ${config.datagolApi.writeToken ? '***' : 'Not set'}`);
-    log.info('  Table IDs:');
-    log.info(`    Job Titles: ${config.datagolApi.tables.jobTitles}`);
-    log.info(`    Excluded Companies: ${config.datagolApi.tables.excludedCompanies}`);
-    log.info(`    Locations: ${config.datagolApi.tables.locations}`);
-    log.info(`    Job Postings: ${config.datagolApi.tables.jobPostings}`);
-
-    return config;
-}
-
-
+import { ApifyClient } from 'apify-client';
+import { getMergedConfig } from './config.js';
+import { fetchAllData, saveToDatagol } from './datagol_api.js';
+import { getDatasetItems } from './apify_service.js';
+import { processAllJobs } from './job_processor.js';
 
 Actor.main(async () => {
     try {
+        log.info('Starting the Datagol Bridge actor.');
+
+        // 1. Configuration
         const input = await Actor.getInput() ?? {};
         const config = getMergedConfig(input);
-        
-        const safeConfig = JSON.parse(JSON.stringify(config));
-        if (safeConfig.datagolApi?.readToken) safeConfig.datagolApi.readToken = '***';
-        if (safeConfig.datagolApi?.writeToken) safeConfig.datagolApi.writeToken = '***';
-        log.info('Using configuration:', safeConfig);
 
-        log.info('🔄 Fetching filter values...');
-        config.filters = {}; // Initialize filters object
-        const [jobTitles, locations, excludedCompanies] = await Promise.all([
-            getFilterValues(config, 'jobTitles'),
-            getFilterValues(config, 'locations'),
-            getFilterValues(config, 'excludedCompanies')
-        ]);
-        
-        config.filters.jobTitles = jobTitles;
-        config.filters.locations = locations;
-        config.filters.excludedCompanies = excludedCompanies;
-        
-        log.info(`✅ Fetched ${jobTitles.length} job titles, ${locations.length} locations, and ${excludedCompanies.length} excluded companies`);
-        
-        if (!jobTitles.length || !locations.length) {
-            log.warning(`⚠️ No job titles or locations found. Actor will exit.`);
+        // Initialize ApifyClient for checking actor's own runs
+        const apifyClient = new ApifyClient({ token: process.env.APIFY_TOKEN });
+        const currentActorId = process.env.APIFY_ACTOR_ID;
+
+        // Check for a recent successful run of this actor itself
+        if (currentActorId) {
+            log.info(`Checking for recent runs of this actor (${currentActorId})...`);
+            const runs = await apifyClient.actor(currentActorId).runs().list({
+                desc: true,
+                limit: 1000, // Only need the very last run
+                status: 'SUCCEEDED',
+            });
+
+            if (runs.items.length > 0) {
+                log.info(`Found ${runs.items.length} previous runs for this actor.`);
+                const lastRun = runs.items[0];
+                const runStartedAt = new Date(lastRun.startedAt);
+                const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+                log.info(`Last run (${lastRun.id}) started at: ${runStartedAt.toISOString()}`);
+                log.info(`Twenty-four hours ago: ${twentyFourHoursAgo.toISOString()}`);
+
+                if (runStartedAt > twentyFourHoursAgo) {
+                    log.info(`Found recent successful run of this actor (${lastRun.id}) started at ${lastRun.startedAt}. Reusing its dataset.`);
+                    log.info(`Attempting to fetch items from dataset ID: ${lastRun.defaultDatasetId}`);
+                    const finalJobs = await getDatasetItems(Actor, lastRun.defaultDatasetId);
+                    console.log(`INFO  DEBUG: finalJobs length: ${finalJobs.length}`);
+                    console.log(`INFO  DEBUG: finalJobs content (first 5 items): ${JSON.stringify(finalJobs.slice(0, 5))}`);
+                    if (finalJobs.length > 0) {
+                        log.info(`Fetched ${finalJobs.length} items from dataset ${lastRun.defaultDatasetId}.`);
+                        await Actor.pushData(finalJobs);
+                        await saveToDatagol(finalJobs, config);
+                        log.info('Datagol Bridge actor finished successfully by reusing data.');
+                        // Removed the temporary Actor.exit() breakpoint
+                        return; // Exit here if data is reused
+                    } else {
+                        log.warning(`Recent run found (${lastRun.id}), but its dataset (${lastRun.defaultDatasetId}) was empty. Proceeding with new scrape.`);
+                    }
+                } else {
+                    log.info(`Last run (${lastRun.id}) started more than 24 hours ago. Proceeding with new scrape.`);
+                }
+            } else {
+                log.info('No previous successful runs found for this actor.');
+            }
+        }
+
+        // 2. Fetch initial data from DataGOL
+        log.info('Fetching initial data from DataGOL...');
+        const filters = await fetchAllData(config);
+        log.info(`Fetched ${filters.jobTitles.length} job titles, ${filters.locations.length} locations, and ${filters.excludedCompanies.length} excluded companies.`);
+
+        if (filters.jobTitles.length === 0 || filters.locations.length === 0) {
+            log.warning('No job titles or locations found. Actor will exit.');
+            await Actor.exit();
             return;
         }
 
-        const jobs = await processJobs(config);
+        // 3. Process all jobs
+        log.info('Starting the job processing pipeline...');
+        const finalJobs = await processAllJobs(config, filters);
 
-        log.info(`💾 Saving ${jobs.length} jobs to Datagol and Actor dataset...`);
-        await saveResults(config, jobs);
+        // 4. Save results
+        if (finalJobs.length > 0) {
+            log.info(`Saving ${finalJobs.length} unique jobs...`);
+            await Actor.pushData(finalJobs);
+            await saveToDatagol(finalJobs, config);
+            log.info('All jobs saved successfully.');
+        } else {
+            log.warning('No new jobs found matching the criteria.');
+        }
+
+        log.info('Datagol Bridge actor finished successfully.');
 
     } catch (error) {
-        log.exception('❌ Fatal error in main execution block', error);
-        await Actor.fail('Actor failed with a fatal error.');
+        log.exception('A fatal error occurred during actor execution:', error);
+        await Actor.fail('Actor execution failed.');
     }
 });

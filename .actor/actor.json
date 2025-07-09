@@ -8,5 +8,10 @@
         "templateId": "js-start"
     },
     "input": "./input_schema.json",
-    "image": "registry.apify.com/ramjeesaradi/datagol-bridge:latest"
+    "image": "registry.apify.com/ramjeesaradi/datagol-bridge:latest",
+    "environmentVariables": {
+        "APIFY_API_TOKEN": "@apifyApiToken",
+        "DATAGOL_WRITE_TOKEN": "@datagolWriteToken",
+        "DATAGOL_WORKSPACE_ID": "@datagolWorkspaceId"
+    }
 }
