@@ -30,7 +30,7 @@ async function fetchFromDatagol(datagolApi, entityType) {
             responseType: 'json',
             timeout: { request: 20000 },
         }).json();
-
+        log.info(`API response for ${entityType}: ${JSON.stringify(response)}`);
         const items = response?.data || response?.list || response?.items || (Array.isArray(response) ? response : []);
 
         if (items.length === 0) {
@@ -42,6 +42,7 @@ async function fetchFromDatagol(datagolApi, entityType) {
 
     } catch (error) {
         log.error(`Failed to fetch ${entityType} from Datagol API: ${error.message}`);
+        log.error(`API error details: ${JSON.stringify(error.response?.body)}`);
         return []; // Return empty array on error to allow fallback
     }
 }
@@ -127,6 +128,7 @@ export async function saveToDatagol(jobs, config) {
         }
 
         try {
+            //log.info(`Saving job: ${JSON.stringify(rowPayload)}`);
             await got.post(url, {
                 headers,
                 body: JSON.stringify({ position: 0, cellValues: rowPayload }), // Manually stringify body to match curl
@@ -137,4 +139,3 @@ export async function saveToDatagol(jobs, config) {
         }
     }
 }
-

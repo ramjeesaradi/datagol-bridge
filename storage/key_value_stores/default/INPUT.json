@@ -4,7 +4,7 @@
   "jobTitlesTableId": "395a586f-2d3e-4489-a5d9-be0039f97aa1",
   "excludedCompaniesTableId": "ac27bdbc-b564-429e-815d-356d58b00d06",
   "locationsTableId": "6122189a-764f-40a9-9721-d756b7dd3626",
-  "jobPostingsTableId": "f16a8e15-fa74-4705-8ef5-7345347f6347",
+  "jobPostingsTableId": "8e71ed6d-ae6a-495c-b93b-1a9429370b56",
   "totalJobsToFetch": 50,
   "scraperTimeoutSecs": 600,
   "maxConcurrentScrapers": 24,

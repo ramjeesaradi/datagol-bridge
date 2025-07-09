@@ -44,7 +44,7 @@
       "title": "Job Postings Table ID",
       "type": "string",
       "description": "Datagol table ID for saving job postings.",
-      "default": "f16a8e15-fa74-4705-8ef5-7345347f6347",
+      "default": "8e71ed6d-ae6a-495c-b93b-1a9429370b56",
       "editor": "textfield"
     },
     "totalJobsToFetch": {

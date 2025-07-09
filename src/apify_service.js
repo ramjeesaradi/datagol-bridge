@@ -28,6 +28,9 @@ export async function runScraper(scraperInput, config, recentRun) {
 
 
     if (recentRun) {
+        log.info(`Reusing run details: ID=${recentRun.id}, Input=${JSON.stringify(recentRun.input)}, DatasetID=${recentRun.defaultDatasetId}`);
+        const runInputMatch = isSimilarInput(actorInput, recentRun.input); // Ensure similarity check is explicit
+        log.info(`Input similarity check result: ${runInputMatch}`);
         log.info(`Reusing results from recent run ${recentRun.id} for input: ${JSON.stringify(actorInput)}`);
         return getDatasetItems(recentRun.defaultDatasetId);
     }
@@ -129,12 +132,16 @@ function isSimilarInput(input1, input2) {
  * @param {string} datasetId - The ID of the dataset to fetch items from.
  * @returns {Promise<Array>} An array of items from the dataset.
  */
-export async function getDatasetItems(actor, datasetId) {
-    console.log(`INFO  Attempting to open dataset with ID: ${datasetId}`);
-    const dataset = await actor.openDataset(datasetId);
-    console.log(`INFO  Dataset opened. Dataset name: ${dataset.name}, ID: ${dataset.id}`);
-    const { items, ...rest } = await dataset.getData();
-    console.log(`INFO  Raw items from dataset.getData(): ${JSON.stringify(items.slice(0, 5))}`); // Log first 5 items
-    console.log(`INFO  Total items found in dataset.getData(): ${items.length}`);
-    return items;
+export async function getDatasetItems(datasetId) {
+    try {
+        console.log(`INFO  Attempting to open dataset with ID: ${datasetId}`);
+        const client = new ApifyClient();
+        const datasetClient = client.dataset(datasetId);
+        const { items } = await datasetClient.listItems();
+        console.log(`INFO  Total items found in dataset.getData(): ${items.length}`);
+        return items;
+    } catch (error) {
+        console.error(`ERROR in getDatasetItems: Failed to fetch dataset items for ID ${datasetId}. Error: ${error.message}`);
+        return [];
+    }
 }

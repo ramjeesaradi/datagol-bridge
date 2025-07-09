@@ -22,6 +22,7 @@ const getJobKey = (job) => {
  * @returns {Promise<Array>} A promise that resolves to an array of unique, filtered job postings.
  */
 export async function processAllJobs(config, filters) {
+    log.info('Starting processAllJobs with config and filters.');
     const { jobTitles, locations, excludedCompanies } = filters;
     const searchCombinations = [];
 
@@ -34,6 +35,7 @@ export async function processAllJobs(config, filters) {
     log.info(`Created ${searchCombinations.length} search combinations.`);
 
     const allJobs = await runBatches(searchCombinations, config);
+    log.info(`After runBatches, allJobs length: ${allJobs.length}`);
 
     log.info(`Filtering ${allJobs.length} jobs against ${excludedCompanies.length} excluded companies.`);
     const excludedCompaniesSet = new Set(excludedCompanies.map(c => c.toLowerCase()));
@@ -93,4 +95,3 @@ async function runBatches(searchCombinations, config) {
 
     return allJobs;
 }
-

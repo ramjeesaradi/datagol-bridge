@@ -36,20 +36,19 @@ Actor.main(async () => {
                 log.info(`Twenty-four hours ago: ${twentyFourHoursAgo.toISOString()}`);
 
                 if (runStartedAt > twentyFourHoursAgo) {
-                    log.info(`Found recent successful run of this actor (${lastRun.id}) started at ${lastRun.startedAt}. Reusing its dataset.`);
-                    log.info(`Attempting to fetch items from dataset ID: ${lastRun.defaultDatasetId}`);
-                    const finalJobs = await getDatasetItems(Actor, lastRun.defaultDatasetId);
-                    console.log(`INFO  DEBUG: finalJobs length: ${finalJobs.length}`);
-                    console.log(`INFO  DEBUG: finalJobs content (first 5 items): ${JSON.stringify(finalJobs.slice(0, 5))}`);
-                    if (finalJobs.length > 0) {
-                        log.info(`Fetched ${finalJobs.length} items from dataset ${lastRun.defaultDatasetId}.`);
+                    log.info(`Found recent successful run of this actor (${lastRun.id}) started at ${lastRun.startedAt}. Attempting to reuse dataset.`);
+                    const finalJobs = await getDatasetItems(lastRun.defaultDatasetId);
+
+            
+                    
+                    if (finalJobs.length === 0) {
+                        log.warning('Reused dataset is empty. Falling back to new scrape.');
+                        await Actor.exit();
+                    } else {
                         await Actor.pushData(finalJobs);
                         await saveToDatagol(finalJobs, config);
                         log.info('Datagol Bridge actor finished successfully by reusing data.');
-                        // Removed the temporary Actor.exit() breakpoint
-                        return; // Exit here if data is reused
-                    } else {
-                        log.warning(`Recent run found (${lastRun.id}), but its dataset (${lastRun.defaultDatasetId}) was empty. Proceeding with new scrape.`);
+                        return;
                     }
                 } else {
                     log.info(`Last run (${lastRun.id}) started more than 24 hours ago. Proceeding with new scrape.`);
